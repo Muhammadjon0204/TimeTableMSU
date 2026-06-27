@@ -9,6 +9,12 @@ export const axiosClient = axios.create({
   },
 });
 
+let logoutCallback: (() => void) | null = null;
+
+export function setLogoutCallback(callback: () => void) {
+  logoutCallback = callback;
+}
+
 axiosClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
 
@@ -18,6 +24,24 @@ axiosClient.interceptors.request.use((config) => {
 
   return config;
 });
+
+axiosClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('role');
+      localStorage.removeItem('fullName');
+      localStorage.removeItem('email');
+
+      if (logoutCallback) {
+        logoutCallback();
+      }
+    }
+    return Promise.reject(error);
+  },
+);
 
 export function getApiError(error: unknown): string {
   if (axios.isAxiosError(error)) {
@@ -29,5 +53,5 @@ export function getApiError(error: unknown): string {
     return error.message;
   }
 
-  return 'Unexpected request error';
+  return 'Неожиданная ошибка запроса';
 }

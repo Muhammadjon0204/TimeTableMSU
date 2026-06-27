@@ -1032,3 +1032,17 @@ Backend готов к минимальному React frontend для Student/Tea
 - CRUD endpoints не переписывались;
 - существующие authorization policies сохранены;
 - `ControlForm` не возвращался к `Test`, compatibility enum values не удалялись.
+# Admin Attendance Analytics Added
+
+- Backend files added/changed: `Backend/src/Api/Controllers/AdminDashboardController.cs`, `Backend/src/Application/DTOs/DashboardDTOs/*`, `IAdminDashboardService`, `IAdminDashboardRepository`, `AdminDashboardService`, `AdminDashboardRepository`, `Application/DependencyInjection.cs`, and `Infrastructure/DependencyInjection.cs`.
+- Frontend files changed: `Frontend/src/pages/admin/AdminDashboard.tsx`, `Frontend/src/styles/cards.css`, `Frontend/package.json`, and `Frontend/package-lock.json`.
+- Added endpoints: `GET /api/admin-dashboard/attendance-weekly?weekId={weekId}&groupId={groupId}` and `GET /api/admin-dashboard/group-lookups`.
+- Both endpoints are protected with `Authorize(Policy = AuthPolicies.AdminOnly)`.
+- Expected is calculated from schedule and students: for every schedule item in the selected week/day, add the number of students in that schedule group.
+- Present is calculated as `Math.Max(expected - absent - late, 0)` because normal present attendance records are not guaranteed to exist for every student/lesson.
+- Late is calculated from `AttendanceMark.Late`; the current `Attendance` entity has no `LateMinutes` field.
+- Absent is calculated from `AttendanceMark.Absent`, `AttendanceMark.ValidReason`, and `AttendanceMark.None`. `ValidReason` is included in "Не пришли" for the current chart, with a TODO to split it into a separate line later.
+- Duplicate attendance records are grouped by `StudentId + WeekId + Day + Para`; absent has priority over late.
+- Checks passed: `dotnet build Backend/src/Api/Api.csproj -o Backend/artifacts/api-build-check` and frontend `npm run build`.
+- `dotnet build Backend/Backend.slnx` was blocked by an existing `Api (31388)` process locking `Backend/src/Api/bin/Debug/net10.0/Application.dll`; build verification succeeded with an alternate output directory.
+- Month/Semester analytics remain TODO; only weekly analytics are implemented.

@@ -94,6 +94,23 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (DbUpdateException)
+    {
+        context.Response.StatusCode = StatusCodes.Status409Conflict;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            error = "Не удалось сохранить изменения: запись связана с другими данными. Сначала удалите или измените связанные записи."
+        });
+    }
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

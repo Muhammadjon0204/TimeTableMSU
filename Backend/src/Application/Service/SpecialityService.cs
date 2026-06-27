@@ -213,6 +213,11 @@ public class SpecialityService : ISpecialityService
             return Result.Failure($"Специальность с ID {id} не найдена");
         }
 
+        if (speciality.Groups.Count > 0)
+        {
+            return Result.Failure("Нельзя удалить специальность: сначала удалите или перенесите связанные группы.");
+        }
+
         await _specialityRepository.DeleteAsync(speciality);
 
         return Result.Success();

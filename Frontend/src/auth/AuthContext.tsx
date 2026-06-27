@@ -1,9 +1,10 @@
-import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
-import { axiosClient } from '../api/axiosClient';
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { axiosClient, setLogoutCallback } from '../api/axiosClient';
 
 type LoginResponse = {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   role: string;
   fullName?: string;
   email?: string;
@@ -35,15 +36,47 @@ const initialAuthState: AuthState = {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(initialAuthState);
+  const navigate = useNavigate();
 
   async function login(email: string, password: string) {
-    const response = await axiosClient.post<LoginResponse>('/auth/login', { email, password });
+    const response = await axiosClient.post<unknown>('/auth/login', { email, password });
+    const data = response.data as Record<string, unknown>;
+
+    // Support multiple response formats for accessToken
+    const accessToken =
+      (data.accessToken as string) ??
+      (data.token as string) ??
+      (data.jwtToken as string) ??
+      ((data.value as Record<string, unknown>)?.accessToken as string) ??
+      ((data.value as Record<string, unknown>)?.token as string);
+
+    if (!accessToken) {
+      throw new Error('Не удалось получить access token от сервера');
+    }
+
+    // Support multiple response formats for refreshToken
+    const refreshToken =
+      (data.refreshToken as string) ??
+      ((data.value as Record<string, unknown>)?.refreshToken as string);
+
+    // Support multiple response formats for role
+    const role =
+      (data.role as string) ??
+      (data.userRole as string) ??
+      ((data.value as Record<string, unknown>)?.role as string) ??
+      ((data.value as Record<string, unknown>)?.userRole as string);
+
+    // Support multiple response formats for email
+    const emailFromResponse =
+      (data.email as string) ??
+      ((data.value as Record<string, unknown>)?.email as string);
+
     const nextState: AuthState = {
-      accessToken: response.data.accessToken,
-      refreshToken: response.data.refreshToken,
-      role: response.data.role,
-      fullName: response.data.fullName ?? null,
-      email: response.data.email ?? email,
+      accessToken,
+      refreshToken: refreshToken ?? null,
+      role: role ?? null,
+      fullName: (data.fullName as string) ?? ((data.value as Record<string, unknown>)?.fullName as string) ?? null,
+      email: emailFromResponse ?? email,
     };
 
     localStorage.setItem('accessToken', nextState.accessToken ?? '');
@@ -53,7 +86,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('email', nextState.email ?? '');
     setAuthState(nextState);
 
-    return response.data;
+    return {
+      accessToken,
+      refreshToken: refreshToken ?? undefined,
+      role: role ?? '',
+      fullName: nextState.fullName ?? undefined,
+      email: nextState.email ?? undefined,
+    };
   }
 
   function logout() {
@@ -70,6 +109,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: null,
     });
   }
+
+  // Initialize logout callback for 401 handling
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+      navigate('/login', { replace: true });
+      alert('Сессия истекла. Войдите снова.');
+    };
+
+    setLogoutCallback(handleUnauthorized);
+  }, [navigate]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
