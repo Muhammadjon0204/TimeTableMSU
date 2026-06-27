@@ -1,0 +1,50 @@
+# Build folders
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.rsuser
+
+# VS Code
+.vscode/
+
+# Rider
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Environment / secrets
+.env
+.env.*
+appsettings.Development.json
+appsettings.Local.json
+appsettings.Production.json
+
+# User secrets
+secrets.json
+
+# Database / local files
+*.db
+*.sqlite
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node / frontend if exists
+node_modules/
+dist/
+build/
+
+# Uploads / generated files
+wwwroot/uploads/
+uploads/
+
+# Packages
+*.nupkg

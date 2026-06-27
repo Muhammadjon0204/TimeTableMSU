@@ -1,0 +1,73 @@
+Auditoria 
+1 Id
+2 Number
+3 Type ( компютерный кабинет , лабаратория химии , лабаратория геологии, лабаратория физики, лекционная аудитория, потоковая аудитория, общая оудитория)
+
+
+Predmet
+1 Id 
+2 Name
+3 Semestr
+4 HourCount
+5 ControlForm ( зачет , экзамен)
+
+
+
+Specialnosti
+1 Id 
+2 Name
+3 Facultet
+
+
+
+Facultet
+1 Id 
+2 Name
+
+
+Gruppi
+1 Id
+2 Name
+3 Specialnost
+4 Kurs
+
+
+
+
+Prepodi
+1 Id
+2 FirstName
+3 LastName
+4 FatherName
+5 Uchonaya stepen ( учёная степень )
+6 uchonaya zvanie ( учёеерк звание )
+7 dolzhnost ( должность )
+8 telephone 
+9 address
+10 email
+
+
+student
+1 Id
+2 FirstName
+3 LastName
+4 FatherName
+5 Gruppa
+6 telephone
+7 address
+8 email
+9 BirthDate
+
+
+
+discipline 
+1 code 
+2 predmet
+3 prepodovatel
+4 gruppa
+5 kolichestvo leksionnikh zanyatiy
+6 kolichestvo practicheskikh zanyatiy
+7 kolichestvo laboratornih zanyatiy
+8 kolichestvo drugih rabot 
+9 control ( зачёт - количество студентов умножен на 0.2 , экзамен - количество студентов умножен на 0.35 , если будет дробная то округлить вверх )
+ 
