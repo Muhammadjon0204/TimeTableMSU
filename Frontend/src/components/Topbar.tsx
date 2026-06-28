@@ -10,9 +10,7 @@ import {
   GraduationCap,
   Landmark,
   LayoutDashboard,
-  LogOut,
   NotebookTabs,
-  Search,
   Settings,
   UserCog,
   UserRoundCheck,
@@ -20,7 +18,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
 
 type PageMeta = {
   title: string;
@@ -115,36 +112,21 @@ const pageMetaByPath: Record<string, PageMeta> = {
 
 export function Topbar() {
   const location = useLocation();
-  const { fullName, email, logout } = useAuth();
   const meta = pageMetaByPath[location.pathname] ?? defaultMeta;
   const PageIcon = meta.icon;
 
+  if (location.pathname !== '/admin') {
+    return null;
+  }
+
   return (
-    <header className="topbar">
+    <header className="topbar topbar--home-only">
       <div className="topbar-page">
         <p className="topbar-kicker">
           <PageIcon size={16} />
           <span>Управление университетом</span>
         </p>
         <h1>{meta.title}</h1>
-        <p>{meta.description}</p>
-      </div>
-
-      <div className="topbar-actions">
-        <div className="search-shell">
-          <Search size={17} />
-          <input aria-label="Поиск по данным администратора" placeholder="Поиск по записям" />
-        </div>
-        <div className="profile-chip">
-          <span className="profile-avatar">{(fullName ?? email ?? 'A').slice(0, 1).toUpperCase()}</span>
-          <span>
-            <strong>{fullName || 'Администратор'}</strong>
-            <small>{email || 'Панель управления'}</small>
-          </span>
-        </div>
-        <button className="icon-button" type="button" onClick={logout} aria-label="Выйти" title="Выйти">
-          <LogOut size={18} />
-        </button>
       </div>
     </header>
   );

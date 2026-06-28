@@ -191,3 +191,55 @@ npm run build
 - `/admin/users` remains a limitation page because there is no backend CRUD endpoint for admin user management.
 - Real endpoints called: `GET {endpoint}`, `GET {endpoint}/{id}` for edit hydration, `POST {endpoint}`, `PUT {endpoint}/{id}`, and `DELETE {endpoint}/{id}` through `axiosClient` with the existing Authorization header.
 - `npm run build` passed. The remaining Vite chunk-size warning is not a build error.
+
+# Academic Gradebook Module Added
+
+- Added backend-backed premium gradebook flow for `/admin/academic-performances`; the page now focuses on the hierarchy without a duplicate `Зачетка / Таблица оценок` switch.
+- Frontend files changed: `Frontend/src/pages/admin/AcademicPerformancesPage.tsx` and `Frontend/src/styles/cards.css`.
+- The hierarchy is `Faculty -> Group -> Student -> Gradebook`: faculty cards load groups, group cards load students, student selection opens a preview panel, and a dedicated button opens the gradebook.
+- The page calls real API endpoints under `/admin-academic-journal`; no mock or random data is used.
+- Added compact progress breadcrumb, faculty/group search and sorting/filter controls, student master-detail layout, student preview KPIs, semester summaries, print/export actions, and premium gradebook hero.
+- Semesters are displayed as tabs; each tab contains subjects with control form, teacher, mark, status, retake placeholder, and summary KPIs.
+- `Credit` is displayed as `Зачет`; `Exam` is displayed as `Экзамен`.
+- Retake history is not supported by the current backend model. The UI shows `нет`, and backend code has TODO: `Retake history requires separate backend model later.`
+- Loading and empty states were added for faculties, groups, students, search results, and empty gradebooks.
+- Latest check attempted: `npm run build`; command execution was rejected in the current environment, so this UI pass still needs a local build rerun.
+
+# Academic Journal Minimal Redesign
+
+- `/admin/academic-performances` was simplified into a strict academic journal style: no stepper, no student preview panel, no gradient hero, no KPI-heavy blocks.
+- Components changed in `AcademicPerformancesPage.tsx`: faculty grid, group grid, `StudentsTable`, `StudentJournalHeader`, `SemesterTabs`, and `GradebookTable`.
+- Student selection is now a clean table with `ФИО`, `Телефон`, `Email`, `Адрес`, optional average mark, and `Открыть журнал`.
+- Student journal is now a quiet header plus semester tabs and one gradebook table.
+- Backend student DTO was extended with `Address`; no mock data was added.
+- Latest `npm run build` attempt was rejected by the environment, so build verification is pending.
+
+# Academic Statement Registry Layout
+
+- `/admin/academic-performances` now uses the target registry structure: after faculty and group selection, the screen becomes two columns with a left student list and a right academic statement.
+- Removed rendered page title, flow stepper, hero blocks, preview profile, KPI cards, distribution bars, and unused premium CSS from this module.
+- Left panel: `Студенты группы {GroupName}`, search, total count, compact vertical selectable student list.
+- Right panel: neutral empty state until a student is selected; then student info header, print/export buttons, semester tabs, academic year selector, and statement table.
+- Statement table columns: `№`, `Дисциплина`, `Форма контроля`, `Преподаватель`, `1 атт.`, `2 атт.`, `Итог`, `Статус`, `Пересдача`, `Примечание`.
+- Frontend now calls `GET /api/admin-academic-journal/students/{studentId}/journal` for the strict journal DTO.
+- Latest `npm run build` attempt was rejected by the environment, so build verification is still pending.
+
+# Academic Statement Sheet Refinement
+
+- The journal view was adjusted closer to the reference: a flat 300px student registry on the left and a wide sheet-like statement on the right.
+- Desktop table layout now uses `table-layout: fixed`, fixed column proportions, ellipsis/two-line cells, and no desktop `min-width` forcing horizontal scroll. Overflow is only enabled below the responsive breakpoint.
+- The visible table labels changed from `1 атт.` / `2 атт.` to `1 кр` / `2 кр`.
+- Added the `Тур` column beside `Пересдача`.
+- The table now consumes backend display fields for retake status and round: `retakeStatusDisplayValue`, `retakeRoundDisplayValue`, `resultType`, and `retakeType`.
+- The student list was made more compact and registry-like, with a small filter icon and subdued `Показать всех` control.
+- Latest `npm run build` attempt was rejected by the environment, so this pass still needs local build verification.
+
+# Academic Performances Flow Update
+
+- `/admin/academic-performances` no longer renders the split layout with students on the left and a journal on the right.
+- The active flow is now `faculties -> groups -> students -> student-journal`.
+- After selecting a group, the module opens a full student table screen for that group.
+- The student table columns are `№`, `ФИО`, `Телефон`, `Email`, `Адрес`, `Оценок`, `Средний балл`, and `Действие`.
+- Opening a student now shows the academic statement as a full-width screen.
+- The first two screens keep the restored faculty/group card styling.
+- Latest `npm run build` attempt was rejected by the environment, so build verification is pending.

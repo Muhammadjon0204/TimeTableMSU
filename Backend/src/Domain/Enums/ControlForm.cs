@@ -2,6 +2,6 @@
 
 public enum ControlForm // форма контроля предметов
 {
-    Credit, // зачёт
-    Exam  // экзамен
+    Credit = 1, // зачёт
+    Exam = 2  // экзамен
 }

@@ -1046,3 +1046,67 @@ Backend готов к минимальному React frontend для Student/Tea
 - Checks passed: `dotnet build Backend/src/Api/Api.csproj -o Backend/artifacts/api-build-check` and frontend `npm run build`.
 - `dotnet build Backend/Backend.slnx` was blocked by an existing `Api (31388)` process locking `Backend/src/Api/bin/Debug/net10.0/Application.dll`; build verification succeeded with an alternate output directory.
 - Month/Semester analytics remain TODO; only weekly analytics are implemented.
+
+# Academic Gradebook Module Added
+
+- Added endpoints:
+  - `GET /api/admin-academic-journal/faculties`
+  - `GET /api/admin-academic-journal/faculties/{facultyId}/groups`
+  - `GET /api/admin-academic-journal/groups/{groupId}/students`
+  - `GET /api/admin-academic-journal/students/{studentId}/gradebook`
+- All endpoints are protected with `Authorize(Policy = AuthPolicies.AdminOnly)`.
+- Added DTOs in `Application/DTOs/AdminAcademicJournalDTOs`: `AcademicFacultyCardDto`, `AcademicGroupCardDto`, `AcademicStudentCardDto`, `StudentGradebookDto`, `StudentSemesterGradebookDto`, and `StudentSubjectGradeDto`.
+- Added service/repository/controller files: `IAdminAcademicJournalService`, `IAdminAcademicJournalRepository`, `AdminAcademicJournalService`, `AdminAcademicJournalRepository`, and `AdminAcademicJournalController`.
+- Registered the new service and repository in Application and Infrastructure DI.
+- Read queries use `AsNoTracking()` and return DTOs/read models rather than exposing EF entities from the API.
+- The gradebook hierarchy is `Faculty -> Group -> Student -> Gradebook`; groups are loaded by faculty, students are loaded by group, and gradebook rows are grouped by `Subject.Semester`.
+- Control form is taken from `Subject.ControlForm`; frontend displays `Credit` as `Зачет` and `Exam` as `Экзамен`.
+- Mark is taken from `AcademicPerformance.Mark`; status is `Passed` for marks `3-5`, `Failed` for `2`, and `NotSet` when no mark exists.
+- Teacher is taken from `AcademicPerformance.Teacher`, with discipline teacher data available in the read projection.
+- Retake history is TODO only because the current domain has no separate Retake model: `HasRetake = false`, `RetakeCount = 0`. TODO in code: `Retake history requires separate backend model later.`
+- Frontend changed: `/admin/academic-performances` now uses a focused academic journal flow with compact breadcrumb, premium faculty/group cards, student master-detail preview, and a richer gradebook screen. The duplicate `Зачетка / Таблица оценок` switch was removed per UI feedback.
+- Latest UI-only pass did not change backend endpoints or DTOs. Student, gradebook, semester, and distribution summaries are calculated on the frontend from real `/admin-academic-journal` responses.
+- Latest check attempted: `npm run build`; command execution was rejected in the current environment, so this UI pass still needs a local build rerun.
+
+# Academic Journal Minimal Redesign
+
+- Frontend changed again per UI direction: removed stepper/breadcrumb, student preview panel, gradient hero, KPI cards, distribution bars, and fancy profile layout.
+- Student list is now a strict table: `ФИО`, `Телефон`, `Email`, `Адрес`, optional average mark, and action button.
+- Student journal is now a compact academic header with semester tabs and a clean gradebook table.
+- Backend change in this pass: `AcademicStudentCardDto` now includes `Address`, mapped from `Student.Address` in `AdminAcademicJournalRepository`.
+- Retakes remain honest TODO-only data because there is still no separate retake model.
+- Latest `npm run build` and backend build attempts were rejected by the environment, so verification is pending.
+
+# Academic Statement Registry Layout
+
+- Added strict result enums:
+  - `Domain/Enums/CreditResult.cs`
+  - `Domain/Enums/ExamResult.cs`
+- Updated `ControlForm` explicit values to `Credit = 1` and `Exam = 2`.
+- Added read DTOs in `StudentJournalDto.cs`: `StudentJournalDto`, `StudentJournalHeaderDto`, `StudentSemesterJournalDto`, and `StudentJournalRowDto`.
+- Added endpoint: `GET /api/admin-academic-journal/students/{studentId}/journal`.
+- Existing old CRUD was not changed; this is a read-only admin journal endpoint protected by `AdminOnly`.
+- Credit display logic: `Mark <= 0 -> Неявился`, `1 -> Недопуск`, `2 -> Незачет`, `3+ -> Зачет`; status becomes `Неявка`, `Недопуск`, `Не зачтено`, or `Зачтено`.
+- Exam display logic: `0 -> Неявился`, `1 -> Недопуск`, `2 -> Неудовлетворительно`, `3 -> Удовлетворительно`, `4 -> Хорошо`, `5+ -> Отлично`; status becomes `Неявка`, `Недопуск`, `Не сдано`, or `Сдано`.
+- First/second attestation remain `null` and display as `—` because the current database model has no real fields for them.
+- Retakes remain `HasRetake = false`, `RetakeDisplayValue = "Нет"` because no retake model exists.
+- Frontend now renders the module as a strict two-column statement registry: student list on the left, student statement table on the right.
+- Latest `npm run build` and backend build attempts were rejected by the environment, so verification is pending.
+
+# Academic Retake/Round Statement Refinement
+
+- Added retake enums:
+  - `Domain/Enums/RetakeStatus.cs`
+  - `Domain/Enums/RetakeRound.cs`
+- Updated `StudentJournalRowDto` for the sheet UI:
+  - `FirstControlWork`
+  - `SecondControlWork`
+  - `RetakeStatusDisplayValue`
+  - `RetakeRoundDisplayValue`
+  - `ResultType`
+  - `RetakeType`
+- `ControlForm` is returned as a string display contract (`Credit` / `Exam`) for the journal row while `CreditResult` and `ExamResult` remain typed enum values.
+- Retake status is computed from real final result data: passed exam/credit means `Нет`; failed/absent result means `Требуется`; `Недопуск` remains `Недопуск`.
+- Retake round uses existing `AcademicPerformance.Tur` when present; otherwise unresolved failed/absent results default to `2 тур`, and closed/not-allowed results show `—`.
+- No fake retake history was generated. The current read model only exposes the current status and current round.
+- Latest backend build attempt was rejected by the environment, so build verification is pending for this pass.

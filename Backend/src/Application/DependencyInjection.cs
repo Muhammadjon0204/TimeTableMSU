@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<IExecutionService, ExecutionService>();
         services.AddScoped<IPortalService, PortalService>();
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        services.AddScoped<IAdminAcademicJournalService, AdminAcademicJournalService>();
 
         return services;
     }
