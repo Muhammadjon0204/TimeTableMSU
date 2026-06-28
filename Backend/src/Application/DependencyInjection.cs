@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IPortalService, PortalService>();
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
         services.AddScoped<IAdminAcademicJournalService, AdminAcademicJournalService>();
+        services.AddScoped<IAdminScheduleBoardService, AdminScheduleBoardService>();
 
         return services;
     }
