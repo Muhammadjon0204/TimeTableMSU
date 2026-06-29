@@ -1110,3 +1110,132 @@ Backend готов к минимальному React frontend для Student/Tea
 - Retake round uses existing `AcademicPerformance.Tur` when present; otherwise unresolved failed/absent results default to `2 тур`, and closed/not-allowed results show `—`.
 - No fake retake history was generated. The current read model only exposes the current status and current round.
 - Latest backend build attempt was rejected by the environment, so build verification is pending for this pass.
+
+# DEV Data Seeder Added
+
+> Дата добавления: 2026-06-29
+> Область: Development database seed for TimeTableMSU
+> Важно: Проверить connection string. Удалять только DEV database.
+
+## Где создан seed
+
+- `Backend/src/Infrastructure/Persistence/Seed/DevDataSeeder.cs`
+- Подключен в `Backend/src/Api/Program.cs` только внутри `app.Environment.IsDevelopment()`.
+- При старте Development API выполняется `Database.MigrateAsync()`, затем `DevDataSeeder.SeedAsync(...)`.
+- Seeder идемпотентный: если в базе уже есть application data, он пропускает заполнение и пишет warning.
+- Random фиксированный: `new Random(20250628)`.
+
+## Объем DEV данных
+
+- Факультетов: 2.
+- Специальностей: 6.
+- Групп: 24.
+- Студентов: 541.
+- Преподавателей: 40.
+- Предметов: 81.
+- Дисциплин: 267.
+- Недель: 16.
+- Аудиторий: 40.
+- Расписаний: 768, без коллизий группы/преподавателя/аудитории в рамках недели, дня и пары.
+- Посещаемостей: 9475, строятся только по реальным schedule entries.
+- Успеваемостей: 5997, строятся по студентам и дисциплинам их группы.
+- Пользователей: 129, включая `admin@msu.local`, часть преподавателей и часть студентов.
+
+## Структура
+
+- Естественнонаучный факультет: ПМиИ, ХФММ, ГЕО.
+- Гуманитарный факультет: МО, ГМУ, ЛИН.
+- Группы названы в формате `{ShortName}-{Course}01`: `ПМиИ-101`, `ПМиИ-201`, `ПМиИ-301`, `ПМиИ-401`, аналогично для `ХФММ`, `ГЕО`, `МО`, `ГМУ`, `ЛИН`.
+- Студенты распределены по группам неравномерно: 21-24 студента на группу.
+- Для ПМиИ добавлены предметы из учебного плана по семестрам 1-8, включая исправленное название `JavaScript технологии`.
+- `Одинабеков Джассур Музаффирович` ведет `Математический анализ`; преподаватели английского у ПМиИ различаются по семестрам.
+
+## Успеваемость и пересдачи
+
+- Текущая модель `AcademicPerformance` не имеет отдельных полей `CreditResult`, `ExamResult`, `RetakeStatus`, `RetakeRound`.
+- Для зачета `Mark` использует значения enum `CreditResult`: `0` absent, `1` not allowed, `2` not passed, `3` passed.
+- Для экзамена `Mark` использует значения enum `ExamResult`: `0-5`.
+- Пересдачи отражаются через существующее поле `Tur`: `0`, `2`, `3`, `4`.
+- Успешно закрытые предметы получают `Tur = 0`; недопуски получают `Tur = 0`; часть неуспешных получает 2/3 тур или комиссию.
+
+## DEV reset команды
+
+```powershell
+dotnet ef database drop --project Backend/src/Infrastructure --startup-project Backend/src/Api --force
+
+dotnet ef database update --project Backend/src/Infrastructure --startup-project Backend/src/Api
+
+dotnet run --project Backend/src/Api
+```
+
+Перед `drop` обязательно проверить `Backend/src/Api/appsettings.json` и убедиться, что `DefaultConnection` указывает на DEV database.
+
+## Фактический DEV reset 2026-06-29
+
+- Проверенный connection string: `Host = localhost; Database = TimeTableMSU_db; Username = postgres; Port = 5432`.
+- `dotnet build Backend/Backend.slnx`: passed, 0 warnings, 0 errors.
+- `dotnet ef database drop --project Backend/src/Infrastructure --startup-project Backend/src/Api --force`: database `TimeTableMSU_db` successfully dropped.
+- `dotnet ef database update --project Backend/src/Infrastructure --startup-project Backend/src/Api`: migrations applied successfully.
+- `dotnet run --project Backend/src/Api --urls http://localhost:5010`: API started and DEV seed completed.
+- Verified with admin login `admin@msu.local`.
+- Verified endpoint counts: faculties 2, specialities 6, groups 24, students 541, teachers 40, subjects 81, disciplines 267, weeks 16, audiences 40, schedules 768, attendances 9475, academic performances 5997.
+- Verified admin journal faculties endpoint: 2 faculties.
+- Verified admin schedule board weekly endpoint: OK.
+
+# DEV Academic History Seeder Fix
+
+> Дата исправления: 2026-06-29
+> Область: Development seed, academic journal history
+
+## Что исправлено
+
+- Исправлена логика `Backend/src/Infrastructure/Persistence/Seed/DevDataSeeder.cs`.
+- `SubjectPlan` теперь хранит `SpecialityShortName`, поэтому дисциплины и успеваемость не смешивают предметы разных специальностей.
+- `Discipline` создается для каждой группы за все уже пройденные семестры: `Subject.Semester <= Group.Course * 2`.
+- `Schedule` отделен от исторической успеваемости и по-прежнему берет только текущие два семестра курса: `Course * 2 - 1` и `Course * 2`.
+- `AcademicPerformance` создается по всем discipline rows группы, то есть за все доступные студенту исторические семестры.
+- Будущие семестры не создаются: 1 курс получает 1-2, 2 курс 1-4, 3 курс 1-6, 4 курс 1-8.
+- Добавлен in-memory guard от дублей `Student + Subject + Semester` при создании `AcademicPerformance`.
+
+## Фактический DEV reset после исправления
+
+- `dotnet build Backend/Backend.slnx`: passed, 0 warnings, 0 errors.
+- `dotnet ef database drop --project Backend/src/Infrastructure --startup-project Backend/src/Api --force`: database `TimeTableMSU_db` successfully dropped.
+- `dotnet ef database update --project Backend/src/Infrastructure --startup-project Backend/src/Api`: migrations applied successfully.
+- `dotnet run --project Backend/src/Api --urls http://localhost:5010`: API started and DEV seed completed.
+- `npm run build` in `Frontend`: passed; Vite reported only the existing large chunk warning.
+
+## Фактические counts после исправления
+
+- Faculties: 2.
+- Specialities: 6.
+- Groups: 24.
+- Students: 541.
+- Teachers: 40.
+- Subjects: 117.
+- Disciplines: 328.
+- Weeks: 16.
+- Audiences: 40.
+- Schedules: 768.
+- Attendances: 9467.
+- AcademicPerformances: 7454.
+
+## Проверка journal endpoint
+
+Проверено через `GET /api/admin-academic-journal/students/{studentId}/journal`:
+
+- `ПМиИ-101`: semesters `1,2`, rows `22`.
+- `ПМиИ-201`: semesters `1,2,3,4`, rows `43`.
+- `ПМиИ-301`: semesters `1,2,3,4,5,6`, rows `56`.
+- `ПМиИ-401`: semesters `1,2,3,4,5,6,7,8`, rows `67`.
+- `ГМУ-201`: semesters `1,2,3,4`, rows `6`.
+
+Пересдачи сохранены и встречаются в разных семестрах. В первых пяти студентах проверенных групп найдены retake rows:
+
+- `ПМиИ-101`: 13, включая 1 commission.
+- `ПМиИ-201`: 30, включая 6 commission.
+- `ПМиИ-301`: 35, включая 3 commission.
+- `ПМиИ-401`: 41, включая 2 commission.
+- `ГМУ-201`: 4.
+
+Frontend `/admin/academic-performances` не фильтрует семестры по текущему курсу: tabs строятся из `journal.semesters`, поэтому backend/seed исправления достаточно.

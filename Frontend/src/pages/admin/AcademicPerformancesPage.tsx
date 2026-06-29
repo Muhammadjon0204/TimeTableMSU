@@ -432,7 +432,6 @@ function AcademicStudentsTable({ students, onOpen }: { students: StudentListItem
             <th>Адрес</th>
             <th>Оценок</th>
             <th>Средний балл</th>
-            <th>Действие</th>
           </tr>
         </thead>
         <tbody>
@@ -457,14 +456,6 @@ function AcademicStudentsTable({ students, onOpen }: { students: StudentListItem
               </td>
               <td>{student.marksCount ?? '—'}</td>
               <td>{formatAverageMark(student.averageMark)}</td>
-              <td>
-                <button className="academic-open-button" type="button" onClick={(event) => {
-                  event.stopPropagation();
-                  onOpen(student);
-                }}>
-                  Открыть
-                </button>
-              </td>
             </tr>
           ))}
         </tbody>
@@ -599,6 +590,19 @@ function AcademicJournalTable({ rows }: { rows: StudentJournalRow[] }) {
   return (
     <div className="academic-table-shell">
       <table className="academic-table academic-statement-table">
+        <colgroup>
+          <col className="academic-col-number" />
+          <col className="academic-col-subject" />
+          <col className="academic-col-control" />
+          <col className="academic-col-teacher" />
+          <col className="academic-col-small" />
+          <col className="academic-col-small" />
+          <col className="academic-col-result" />
+          <col className="academic-col-status" />
+          <col className="academic-col-retake" />
+          <col className="academic-col-round" />
+          <col className="academic-col-note" />
+        </colgroup>
         <thead>
           <tr>
             <th>№</th>
@@ -734,7 +738,11 @@ function ControlFormBadge({ controlForm }: { controlForm: string }) {
 }
 
 function ResultBadge({ row }: { row: StudentJournalRow }) {
-  return <span className={`academic-cell-fill ${getFillToneClass(row.resultType) || getResultTone(row)}`}>{row.finalDisplayValue || '—'}</span>;
+  return (
+    <span className={`academic-cell-fill ${getFillToneClass(row.resultType) || getResultTone(row)}`} title={row.finalDisplayValue || '—'}>
+      {shortenFinalResult(row.finalDisplayValue) || '—'}
+    </span>
+  );
 }
 
 function StatusBadge({ value }: { value: string }) {
@@ -842,6 +850,18 @@ function formatNullableNumber(value?: number | null) {
 
 function formatAverageMark(value?: number | null) {
   return value == null ? '—' : value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function shortenFinalResult(value?: string | null) {
+  if (!value) {
+    return value;
+  }
+
+  if (value === 'Неудовлетворительно') {
+    return 'Неуд.';
+  }
+
+  return value === 'Удовлетворительно' ? 'Удовл.' : value;
 }
 
 function getInitials(fullName: string) {
