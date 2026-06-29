@@ -4,16 +4,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 export type SelectOption = {
   value: string;
   label: string;
+  subtitle?: string;
 };
 
 type CustomSearchableSelectProps = {
   value: string;
   options: SelectOption[];
   placeholder: string;
+  disabled?: boolean;
+  clearValue?: string;
   onChange: (value: string) => void;
 };
 
-export function CustomSearchableSelect({ value, options, placeholder, onChange }: CustomSearchableSelectProps) {
+export function CustomSearchableSelect({ value, options, placeholder, disabled = false, clearValue = 'all', onChange }: CustomSearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [alignEnd, setAlignEnd] = useState(false);
@@ -28,7 +31,7 @@ export function CustomSearchableSelect({ value, options, placeholder, onChange }
       return options;
     }
 
-    return options.filter((option) => option.label.toLowerCase().includes(normalizedSearch));
+    return options.filter((option) => `${option.label} ${option.subtitle ?? ''}`.toLowerCase().includes(normalizedSearch));
   }, [options, searchText]);
 
   useEffect(() => {
@@ -49,6 +52,10 @@ export function CustomSearchableSelect({ value, options, placeholder, onChange }
   }
 
   function toggleMenu() {
+    if (disabled) {
+      return;
+    }
+
     setIsOpen((current) => {
       const nextOpen = !current;
 
@@ -67,6 +74,7 @@ export function CustomSearchableSelect({ value, options, placeholder, onChange }
     isOpen ? 'custom-select--open' : '',
     isWide ? 'custom-select--wide' : '',
     alignEnd ? 'custom-select--align-end' : '',
+    disabled ? 'custom-select--disabled' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -77,19 +85,19 @@ export function CustomSearchableSelect({ value, options, placeholder, onChange }
         <span className={selectedOption ? 'custom-select__value' : 'custom-select__placeholder'} title={selectedOption?.label ?? placeholder}>
           {selectedOption?.label ?? placeholder}
         </span>
-        {value !== 'all' ? (
+        {value !== clearValue && !disabled ? (
           <span
             className="custom-select__clear"
             role="button"
             tabIndex={0}
             onClick={(event) => {
               event.stopPropagation();
-              chooseOption('all');
+              chooseOption(clearValue);
             }}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
-                chooseOption('all');
+                chooseOption(clearValue);
               }
             }}
             aria-label="Очистить фильтр"
@@ -122,6 +130,7 @@ export function CustomSearchableSelect({ value, options, placeholder, onChange }
                   onClick={() => chooseOption(option.value)}
                 >
                   <span>{option.label}</span>
+                  {option.subtitle ? <small>{option.subtitle}</small> : null}
                 </button>
               ))
             ) : (

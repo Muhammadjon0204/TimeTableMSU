@@ -463,9 +463,12 @@ public class ScheduleService : IScheduleService
         }
 
         string subjectName = string.Empty;
+        int subjectId = 0;
 
         if (discipline != null)
         {
+            subjectId = discipline.SubjectId;
+
             if (discipline.Subject != null)
             {
                 if (!string.IsNullOrWhiteSpace(discipline.Subject.Name))
@@ -514,6 +517,7 @@ public class ScheduleService : IScheduleService
             Id = schedule.Id,
             Den = schedule.Den,
             Para = schedule.Para,
+            SubjectId = subjectId,
             DisciplineId = schedule.DisciplineId,
             TeacherId = schedule.TeacherId,
             AudienceId = schedule.AudienceId,

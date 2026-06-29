@@ -1,9 +1,9 @@
-import { AlertTriangle, CalendarDays, Edit2, Plus, RefreshCcw, Trash2 } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Edit2, Plus, RefreshCcw, Trash2, X } from 'lucide-react';
+import type { FormEvent, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { axiosClient, getApiError } from '../../api/axiosClient';
 import { CustomSearchableSelect, type SelectOption } from '../../components/CustomSearchableSelect';
 import { ErrorAlert } from '../../components/ErrorAlert';
-import { FormModal } from '../../components/FormModal';
 import { Loading } from '../../components/Loading';
 import { AdminCrudPage } from './AdminCrudPage';
 import { crudConfigs } from './crudConfigs';
@@ -18,6 +18,37 @@ type LookupDto = {
 type WeekLookupDto = LookupDto & {
   startDate: string;
   endDate: string;
+  displayName?: string;
+};
+
+type SubjectLookupDto = {
+  subjectId: number;
+  subjectName: string;
+  semester: number;
+  controlForm: string;
+  displayName: string;
+};
+
+type DisciplineScheduleOption = {
+  disciplineId: number;
+  subjectId: number;
+  subjectName: string;
+  teacherId: number;
+  teacherFullName: string;
+  groupId: number;
+  groupName: string;
+  specialityId: number;
+  specialityName: string;
+  facultyId: number;
+  facultyName: string;
+  semester: number;
+};
+
+type AudienceLookupDto = {
+  id: number;
+  number: string;
+  type: string;
+  displayName: string;
 };
 
 type WeeklyScheduleBoardDto = {
@@ -276,9 +307,8 @@ export function SchedulesPage() {
         </>
       )}
 
-      <FormModal
+      <ScheduleFormModal
         title={editingSchedule ? 'Изменить занятие' : 'Создать занятие'}
-        fields={scheduleConfig.fields}
         initialValues={editingSchedule ?? undefined}
         isOpen={isModalOpen}
         isSubmitting={isSubmitting}
@@ -331,6 +361,311 @@ type FiltersBarProps = {
   onRefresh: () => void;
   onCreate: () => void;
 };
+
+type ScheduleFormModalProps = {
+  title: string;
+  initialValues?: ScheduleFormValues;
+  isOpen: boolean;
+  isSubmitting?: boolean;
+  onClose: () => void;
+  onSubmit: (values: Record<string, unknown>) => Promise<void>;
+};
+
+function ScheduleFormModal({ title, initialValues, isOpen, isSubmitting, onClose, onSubmit }: ScheduleFormModalProps) {
+  const [weeks, setWeeks] = useState<WeekLookupDto[]>([]);
+  const [subjects, setSubjects] = useState<SubjectLookupDto[]>([]);
+  const [disciplineOptions, setDisciplineOptions] = useState<DisciplineScheduleOption[]>([]);
+  const [audiences, setAudiences] = useState<AudienceLookupDto[]>([]);
+  const [selectedWeekId, setSelectedWeekId] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedPara, setSelectedPara] = useState<number | null>(null);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [selectedDisciplineId, setSelectedDisciplineId] = useState<number | null>(null);
+  const [selectedAudienceId, setSelectedAudienceId] = useState<number | null>(null);
+  const [selectedLectureType, setSelectedLectureType] = useState<string | null>(null);
+  const [isLoadingBase, setIsLoadingBase] = useState(false);
+  const [isLoadingDisciplines, setIsLoadingDisciplines] = useState(false);
+  const [isLoadingAudiences, setIsLoadingAudiences] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setSelectedWeekId(toNumber(initialValues?.weekId));
+    setSelectedDay(toNumber(initialValues?.den));
+    setSelectedPara(toNumber(initialValues?.para));
+    setSelectedSubjectId(toNumber(initialValues?.subjectId));
+    setSelectedTeacherId(toNumber(initialValues?.teacherId));
+    setSelectedGroupId(toNumber(initialValues?.groupId));
+    setSelectedDisciplineId(toNumber(initialValues?.disciplineId));
+    setSelectedAudienceId(toNumber(initialValues?.audienceId));
+    setSelectedLectureType(toStringValue(initialValues?.lectureType));
+    setFormError('');
+  }, [initialValues, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    async function loadBaseLookups() {
+      setIsLoadingBase(true);
+      setFormError('');
+
+      try {
+        const [weeksResponse, subjectsResponse] = await Promise.all([
+          axiosClient.get<WeekLookupDto[]>('/admin-schedule-lookups/weeks'),
+          axiosClient.get<SubjectLookupDto[]>('/admin-schedule-lookups/disciplines'),
+        ]);
+
+        setWeeks(weeksResponse.data);
+        setSubjects(subjectsResponse.data);
+      } catch (requestError) {
+        setFormError(getApiError(requestError));
+      } finally {
+        setIsLoadingBase(false);
+      }
+    }
+
+    void loadBaseLookups();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !selectedSubjectId) {
+      setDisciplineOptions([]);
+      return;
+    }
+
+    async function loadDisciplineOptions() {
+      setIsLoadingDisciplines(true);
+      setFormError('');
+
+      try {
+        const response = await axiosClient.get<DisciplineScheduleOption[]>('/admin-schedule-lookups/discipline-options', {
+          params: { subjectId: selectedSubjectId },
+        });
+
+        setDisciplineOptions(response.data);
+      } catch (requestError) {
+        setFormError(getApiError(requestError));
+      } finally {
+        setIsLoadingDisciplines(false);
+      }
+    }
+
+    void loadDisciplineOptions();
+  }, [isOpen, selectedSubjectId]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    async function loadAudiences() {
+      setIsLoadingAudiences(true);
+
+      try {
+        const response = await axiosClient.get<AudienceLookupDto[]>('/admin-schedule-lookups/audiences', {
+          params: { lectureType: selectedLectureType ?? undefined },
+        });
+
+        setAudiences(response.data);
+      } catch (requestError) {
+        setFormError(getApiError(requestError));
+      } finally {
+        setIsLoadingAudiences(false);
+      }
+    }
+
+    void loadAudiences();
+  }, [isOpen, selectedLectureType]);
+
+  useEffect(() => {
+    if (!selectedTeacherId || !selectedGroupId) {
+      setSelectedDisciplineId(null);
+      return;
+    }
+
+    const matchedDiscipline = disciplineOptions.find((option) => option.teacherId === selectedTeacherId && option.groupId === selectedGroupId);
+    setSelectedDisciplineId(matchedDiscipline?.disciplineId ?? null);
+  }, [disciplineOptions, selectedGroupId, selectedTeacherId]);
+
+  useEffect(() => {
+    if (!selectedAudienceId || audiences.length === 0) {
+      return;
+    }
+
+    if (!audiences.some((audience) => audience.id === selectedAudienceId)) {
+      setSelectedAudienceId(null);
+    }
+  }, [audiences, selectedAudienceId]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const weekOptions = weeks.map((week) => ({
+    value: String(week.id),
+    label: week.displayName ?? `${week.name} · ${formatDate(week.startDate)} - ${formatDate(week.endDate)}`,
+  }));
+
+  const subjectOptions = subjects.map((subject) => ({
+    value: String(subject.subjectId),
+    label: subject.subjectName,
+    subtitle: `${subject.semester} семестр · ${subject.controlForm}`,
+  }));
+
+  const dayOptions = [
+    { value: '1', label: 'Понедельник' },
+    { value: '2', label: 'Вторник' },
+    { value: '3', label: 'Среда' },
+    { value: '4', label: 'Четверг' },
+    { value: '5', label: 'Пятница' },
+    { value: '6', label: 'Суббота' },
+  ];
+
+  const paraOptions = Array.from({ length: 7 }, (_, index) => {
+    const para = index + 1;
+    return { value: String(para), label: `${para} пара`, subtitle: getParaTimeRange(para) };
+  });
+
+  const teacherSource = selectedGroupId ? disciplineOptions.filter((option) => option.groupId === selectedGroupId) : disciplineOptions;
+  const groupSource = selectedTeacherId ? disciplineOptions.filter((option) => option.teacherId === selectedTeacherId) : disciplineOptions;
+  const teacherOptions = uniqueBy(teacherSource, (option) => option.teacherId).map((option) => ({
+    value: String(option.teacherId),
+    label: option.teacherFullName,
+    subtitle: option.facultyName,
+  }));
+  const groupOptions = uniqueBy(groupSource, (option) => option.groupId).map((option) => ({
+    value: String(option.groupId),
+    label: option.groupName,
+    subtitle: option.specialityName,
+  }));
+  const audienceOptions = audiences.map((audience) => ({
+    value: String(audience.id),
+    label: audience.number,
+    subtitle: audience.type,
+  }));
+  const lectureTypeOptions = [
+    { value: 'Lecture', label: 'Лекция' },
+    { value: 'Practice', label: 'Практика' },
+    { value: 'Laboratory', label: 'Лабораторная' },
+  ];
+  const hasDisciplineMismatch = Boolean(selectedSubjectId && selectedTeacherId && selectedGroupId && !selectedDisciplineId && !isLoadingDisciplines);
+  const canSubmit = Boolean(
+    selectedWeekId &&
+      selectedDay &&
+      selectedPara &&
+      selectedSubjectId &&
+      selectedTeacherId &&
+      selectedGroupId &&
+      selectedDisciplineId &&
+      selectedAudienceId &&
+      selectedLectureType &&
+      !isSubmitting &&
+      !hasDisciplineMismatch,
+  );
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!canSubmit) {
+      return;
+    }
+
+    await onSubmit({
+      den: selectedDay,
+      para: selectedPara,
+      disciplineId: selectedDisciplineId,
+      teacherId: selectedTeacherId,
+      audienceId: selectedAudienceId,
+      groupId: selectedGroupId,
+      weekId: selectedWeekId,
+      lectureType: selectedLectureType,
+    });
+  }
+
+  function updateSubject(value: string) {
+    setSelectedSubjectId(toNumber(value));
+    setSelectedTeacherId(null);
+    setSelectedGroupId(null);
+    setSelectedDisciplineId(null);
+  }
+
+  function updateLectureType(value: string) {
+    setSelectedLectureType(value || null);
+    setSelectedAudienceId(null);
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <div className="modal-card schedule-form-modal" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="modal-header">
+          <h2>{title}</h2>
+          <button className="icon-button small" type="button" onClick={onClose} aria-label="Закрыть форму">
+            <X size={18} />
+          </button>
+        </div>
+
+        <form className="form-grid schedule-form-grid" onSubmit={handleSubmit}>
+          <ScheduleSelectField label="Учебная неделя">
+            <CustomSearchableSelect value={toSelectValue(selectedWeekId)} options={weekOptions} placeholder="Выберите учебную неделю" clearValue="" disabled={isLoadingBase} onChange={(value) => setSelectedWeekId(toNumber(value))} />
+          </ScheduleSelectField>
+          <ScheduleSelectField label="День">
+            <CustomSearchableSelect value={toSelectValue(selectedDay)} options={dayOptions} placeholder="Выберите день" clearValue="" onChange={(value) => setSelectedDay(toNumber(value))} />
+          </ScheduleSelectField>
+          <ScheduleSelectField label="Пара">
+            <CustomSearchableSelect value={toSelectValue(selectedPara)} options={paraOptions} placeholder="Выберите пару" clearValue="" onChange={(value) => setSelectedPara(toNumber(value))} />
+          </ScheduleSelectField>
+          <ScheduleSelectField label="Дисциплина">
+            <CustomSearchableSelect value={toSelectValue(selectedSubjectId)} options={subjectOptions} placeholder="Выберите дисциплину" clearValue="" disabled={isLoadingBase} onChange={updateSubject} />
+          </ScheduleSelectField>
+          <ScheduleSelectField label="Преподаватель">
+            <CustomSearchableSelect value={toSelectValue(selectedTeacherId)} options={teacherOptions} placeholder={selectedSubjectId ? 'Выберите преподавателя' : 'Сначала выберите дисциплину'} clearValue="" disabled={!selectedSubjectId || isLoadingDisciplines} onChange={(value) => setSelectedTeacherId(toNumber(value))} />
+          </ScheduleSelectField>
+          <ScheduleSelectField label="Группа">
+            <CustomSearchableSelect value={toSelectValue(selectedGroupId)} options={groupOptions} placeholder={selectedSubjectId ? 'Выберите группу' : 'Сначала выберите дисциплину'} clearValue="" disabled={!selectedSubjectId || isLoadingDisciplines} onChange={(value) => setSelectedGroupId(toNumber(value))} />
+          </ScheduleSelectField>
+          <ScheduleSelectField label="Аудитория">
+            <CustomSearchableSelect value={toSelectValue(selectedAudienceId)} options={audienceOptions} placeholder="Выберите аудиторию" clearValue="" disabled={isLoadingAudiences} onChange={(value) => setSelectedAudienceId(toNumber(value))} />
+          </ScheduleSelectField>
+          <ScheduleSelectField label="Тип занятия">
+            <CustomSearchableSelect value={selectedLectureType ?? ''} options={lectureTypeOptions} placeholder="Выберите тип занятия" clearValue="" onChange={updateLectureType} />
+          </ScheduleSelectField>
+
+          {hasDisciplineMismatch ? (
+            <div className="modal-error schedule-form-message">
+              Для выбранной дисциплины не найдена учебная нагрузка с этим преподавателем и группой.
+            </div>
+          ) : null}
+          {formError ? <div className="modal-error schedule-form-message">{formError}</div> : null}
+
+          <div className="modal-actions">
+            <button className="ghost-button" type="button" onClick={onClose}>
+              Отмена
+            </button>
+            <button className="primary-button" type="submit" disabled={!canSubmit}>
+              {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ScheduleSelectField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="form-field schedule-select-field">
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
 
 function ScheduleFiltersBar({
   weekOptions,
@@ -521,6 +856,42 @@ function createLookupOptions(allLabel: string, items: LookupDto[]): SelectOption
   return [{ value: allValue, label: allLabel }, ...items.map((item) => ({ value: String(item.id), label: item.name }))];
 }
 
+function uniqueBy<T>(items: T[], getKey: (item: T) => number) {
+  const seen = new Set<number>();
+
+  return items.filter((item) => {
+    const key = getKey(item);
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function toNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toStringValue(value: unknown) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null;
+  }
+
+  return value;
+}
+
+function toSelectValue(value: number | null) {
+  return value === null ? '' : String(value);
+}
+
 function countDayLessons(day: ScheduleDayDto) {
   return day.paras.reduce((total, para) => total + para.lessons.length, 0);
 }
@@ -547,6 +918,20 @@ function formatLectureType(value: string) {
   };
 
   return labels[value] ?? value;
+}
+
+function getParaTimeRange(para: number) {
+  const ranges: Record<number, string> = {
+    1: '08:00 - 09:20',
+    2: '09:30 - 10:50',
+    3: '11:00 - 12:20',
+    4: '12:40 - 14:00',
+    5: '14:10 - 15:30',
+    6: '15:40 - 17:00',
+    7: '17:10 - 18:30',
+  };
+
+  return ranges[para] ?? '';
 }
 
 function normalizePayload(values: Record<string, unknown>) {

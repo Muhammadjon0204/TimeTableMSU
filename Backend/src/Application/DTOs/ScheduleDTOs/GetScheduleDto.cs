@@ -5,6 +5,7 @@ public class GetScheduleDto
     public int Id { get; set; }
     public int Den { get; set; }
     public int Para { get; set; }
+    public int SubjectId { get; set; }
     public int DisciplineId { get; set; }
     public int TeacherId { get; set; }
     public int AudienceId { get; set; }

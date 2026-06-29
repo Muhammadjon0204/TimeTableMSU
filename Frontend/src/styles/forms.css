@@ -165,6 +165,35 @@
   animation: modalIn 180ms ease;
 }
 
+.schedule-form-modal {
+  width: min(100%, 58rem);
+}
+
+.schedule-form-grid {
+  gap: 1rem;
+}
+
+.schedule-select-field .custom-select {
+  width: 100%;
+  max-width: none;
+  min-height: 3.35rem;
+}
+
+.schedule-select-field .custom-select__control {
+  height: 3.35rem;
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.schedule-select-field .custom-select__menu {
+  z-index: 120;
+}
+
+.schedule-form-message {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
 .confirm-modal {
   width: min(460px, 100%);
   padding: 1.5rem;
