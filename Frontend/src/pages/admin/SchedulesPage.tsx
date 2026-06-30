@@ -19,6 +19,11 @@ type WeekLookupDto = LookupDto & {
   startDate: string;
   endDate: string;
   displayName?: string;
+  academicYearName?: string;
+  periodName?: string;
+  periodType?: string;
+  weekType?: string;
+  isCurrent?: boolean;
 };
 
 type SubjectLookupDto = {
@@ -56,6 +61,14 @@ type WeeklyScheduleBoardDto = {
   weekName: string;
   startDate: string | null;
   endDate: string | null;
+  academicYearName: string;
+  periodName: string;
+  periodType: string;
+  weekType: string;
+  isCurrentWeek: boolean;
+  isVacation: boolean;
+  isPractice: boolean;
+  isExamSession: boolean;
   days: ScheduleDayDto[];
 };
 
@@ -63,6 +76,8 @@ type ScheduleDayDto = {
   day: number;
   dayName: string;
   date: string | null;
+  isHoliday: boolean;
+  holidayName?: string | null;
   paras: ScheduleParaDto[];
 };
 
@@ -174,7 +189,8 @@ export function SchedulesPage() {
       { value: allValue, label: 'Текущая неделя' },
       ...weeks.map((week) => ({
         value: String(week.id),
-        label: `${week.name} · ${formatDate(week.startDate)} - ${formatDate(week.endDate)}`,
+        label: week.displayName ?? `${week.name} · ${formatDate(week.startDate)} - ${formatDate(week.endDate)}`,
+        subtitle: week.academicYearName || week.periodName ? `${week.academicYearName ?? ''} ${week.periodName ?? ''}`.trim() : undefined,
       })),
     ];
   }, [weeks]);
@@ -750,6 +766,7 @@ function WeeklyScheduleBoard({ board, lessonCount, hasActiveFilters, onCreate, o
 
   return (
     <>
+      <CalendarContextPanel board={board} />
       <div className="schedule-week-heading">
         <div>
           <h2>{board.weekName || 'Учебная неделя'}</h2>
@@ -774,6 +791,31 @@ type ScheduleDayCardProps = {
   onDelete: (lesson: ScheduleLessonDto) => void;
 };
 
+function CalendarContextPanel({ board }: { board: WeeklyScheduleBoardDto }) {
+  return (
+    <div className="schedule-calendar-context">
+      <div>
+        <span className="schedule-context-label">Academic year</span>
+        <strong>{board.academicYearName || '-'}</strong>
+      </div>
+      <div>
+        <span className="schedule-context-label">Period</span>
+        <strong>{board.periodName || board.periodType || '-'}</strong>
+      </div>
+      <div>
+        <span className="schedule-context-label">Week</span>
+        <strong>{formatDate(board.startDate)} - {formatDate(board.endDate)}</strong>
+      </div>
+      <div className="schedule-context-badges">
+        {board.isCurrentWeek ? <span className="schedule-status-badge">Current</span> : null}
+        {board.isPractice ? <span className="schedule-status-badge practice">Practice</span> : null}
+        {board.isExamSession ? <span className="schedule-status-badge exam">Exam</span> : null}
+        {board.isVacation ? <span className="schedule-status-badge vacation">Vacation</span> : null}
+      </div>
+    </div>
+  );
+}
+
 function ScheduleDayCard({ day, onEdit, onDelete }: ScheduleDayCardProps) {
   const dayLessonCount = countDayLessons(day);
 
@@ -784,12 +826,15 @@ function ScheduleDayCard({ day, onEdit, onDelete }: ScheduleDayCardProps) {
           <h3 className="schedule-day-title">{day.dayName}</h3>
           <p className="schedule-day-date">{formatDate(day.date)}</p>
         </div>
-        <span className="schedule-day-count">{dayLessonCount} занятий</span>
+        <div className="schedule-day-side">
+          {day.isHoliday ? <span className="schedule-holiday-badge">{day.holidayName || 'Праздник'}</span> : null}
+          <span className="schedule-day-count">{dayLessonCount} занятий</span>
+        </div>
       </header>
 
       <div className="schedule-day-body">
         {day.paras.length === 0 ? (
-          <div className="schedule-day-empty">Занятий нет</div>
+          <div className="schedule-day-empty">{day.isHoliday ? 'Праздничный день' : 'Занятий нет'}</div>
         ) : (
           day.paras.map((para) => <ScheduleParaBlock key={para.para} para={para} onEdit={onEdit} onDelete={onDelete} />)
         )}

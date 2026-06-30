@@ -19,6 +19,8 @@ public class AdminDashboardRepository : IAdminDashboardRepository
         {
             return await _context.Weeks
                 .AsNoTracking()
+                .Include(week => week.AcademicYear)
+                .Include(week => week.AcademicPeriod)
                 .FirstOrDefaultAsync(week => week.Id == weekId.Value);
         }
 
@@ -26,8 +28,9 @@ public class AdminDashboardRepository : IAdminDashboardRepository
 
         Weeks? currentWeekWithSchedules = await _context.Weeks
             .AsNoTracking()
+            .Include(week => week.AcademicYear)
+            .Include(week => week.AcademicPeriod)
             .Where(week => week.StartDate.Date <= today && week.EndDate.Date >= today)
-            .Where(week => _context.Schedules.Any(schedule => schedule.WeekId == week.Id))
             .OrderByDescending(week => week.StartDate)
             .FirstOrDefaultAsync();
 
@@ -36,19 +39,23 @@ public class AdminDashboardRepository : IAdminDashboardRepository
             return currentWeekWithSchedules;
         }
 
-        Weeks? latestWeekWithSchedules = await _context.Weeks
+        Weeks? nextWeek = await _context.Weeks
             .AsNoTracking()
-            .Where(week => _context.Schedules.Any(schedule => schedule.WeekId == week.Id))
-            .OrderByDescending(week => week.StartDate)
+            .Include(week => week.AcademicYear)
+            .Include(week => week.AcademicPeriod)
+            .Where(week => week.StartDate.Date > today)
+            .OrderBy(week => week.StartDate)
             .FirstOrDefaultAsync();
 
-        if (latestWeekWithSchedules != null)
+        if (nextWeek != null)
         {
-            return latestWeekWithSchedules;
+            return nextWeek;
         }
 
         return await _context.Weeks
             .AsNoTracking()
+            .Include(week => week.AcademicYear)
+            .Include(week => week.AcademicPeriod)
             .OrderByDescending(week => week.StartDate)
             .FirstOrDefaultAsync();
     }

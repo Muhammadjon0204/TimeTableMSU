@@ -123,10 +123,7 @@ public class DisciplineService : IDisciplineService
             GroupId = dto.GroupId,
             LectureHourCount = dto.LectureHourCount,
             PracticeHourCount = dto.PracticeHourCount,
-            LaboratoryHourCount = dto.LaboratoryHourCount,
-            Subject = subject,
-            Teacher = teacher,
-            Group = group
+            LaboratoryHourCount = dto.LaboratoryHourCount
         };
 
         await _disciplineRepository.AddAsync(discipline);
@@ -214,9 +211,6 @@ public class DisciplineService : IDisciplineService
         discipline.LectureHourCount = dto.LectureHourCount;
         discipline.PracticeHourCount = dto.PracticeHourCount;
         discipline.LaboratoryHourCount = dto.LaboratoryHourCount;
-        discipline.Subject = subject;
-        discipline.Teacher = teacher;
-        discipline.Group = group;
 
         await _disciplineRepository.UpdateAsync(discipline);
 
@@ -345,9 +339,15 @@ public class DisciplineService : IDisciplineService
         GetDisciplineDto dto = new GetDisciplineDto
         {
             Id = discipline.Id,
+            SubjectId = discipline.SubjectId,
             SubjectName = subjectName ?? string.Empty,
+            TeacherId = discipline.TeacherId,
             TeacherFullName = teacherFullName ?? string.Empty,
-            GroupName = groupName ?? string.Empty
+            GroupId = discipline.GroupId,
+            GroupName = groupName ?? string.Empty,
+            LectureHourCount = discipline.LectureHourCount,
+            PracticeHourCount = discipline.PracticeHourCount,
+            LaboratoryHourCount = discipline.LaboratoryHourCount
         };
 
         return dto;

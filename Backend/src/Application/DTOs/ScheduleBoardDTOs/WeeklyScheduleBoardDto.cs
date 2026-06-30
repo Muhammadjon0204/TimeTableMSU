@@ -6,6 +6,14 @@ public class WeeklyScheduleBoardDto
     public string WeekName { get; set; } = string.Empty;
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
+    public string AcademicYearName { get; set; } = string.Empty;
+    public string PeriodName { get; set; } = string.Empty;
+    public string PeriodType { get; set; } = string.Empty;
+    public string WeekType { get; set; } = string.Empty;
+    public bool IsCurrentWeek { get; set; }
+    public bool IsVacation { get; set; }
+    public bool IsPractice { get; set; }
+    public bool IsExamSession { get; set; }
     public List<ScheduleDayDto> Days { get; set; } = new();
 }
 
@@ -14,6 +22,8 @@ public class ScheduleDayDto
     public int Day { get; set; }
     public string DayName { get; set; } = string.Empty;
     public DateTime? Date { get; set; }
+    public bool IsHoliday { get; set; }
+    public string? HolidayName { get; set; }
     public List<ScheduleParaDto> Paras { get; set; } = new();
 }
 

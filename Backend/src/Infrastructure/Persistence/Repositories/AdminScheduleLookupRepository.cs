@@ -17,7 +17,26 @@ public class AdminScheduleLookupRepository : IAdminScheduleLookupRepository
     {
         return await _context.Weeks
             .AsNoTracking()
+            .Include(week => week.AcademicYear)
+            .Include(week => week.AcademicPeriod)
             .OrderBy(week => week.StartDate)
+            .ToListAsync();
+    }
+
+    public async Task<List<AcademicPeriod>> GetAcademicPeriodsAsync()
+    {
+        return await _context.AcademicPeriods
+            .AsNoTracking()
+            .Include(period => period.AcademicYear)
+            .OrderBy(period => period.StartDate)
+            .ToListAsync();
+    }
+
+    public async Task<List<Holiday>> GetHolidaysAsync()
+    {
+        return await _context.Holidays
+            .AsNoTracking()
+            .OrderBy(holiday => holiday.Date)
             .ToListAsync();
     }
 

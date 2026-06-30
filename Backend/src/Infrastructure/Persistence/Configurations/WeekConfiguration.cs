@@ -24,5 +24,24 @@ public class WeekConfiguration:IEntityTypeConfiguration<Weeks>
         builder.Property(w => w.EndDate)
             .IsRequired()
             .HasColumnType("date");
+
+        builder.Property(w => w.Type)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(50)
+            .HasDefaultValue(Domain.Enums.WeekType.Study);
+
+        builder.Property(w => w.IsCurrent)
+            .IsRequired();
+
+        builder.HasOne(w => w.AcademicYear)
+            .WithMany(x => x.Weeks)
+            .HasForeignKey(w => w.AcademicYearId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(w => w.AcademicPeriod)
+            .WithMany(x => x.Weeks)
+            .HasForeignKey(w => w.AcademicPeriodId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

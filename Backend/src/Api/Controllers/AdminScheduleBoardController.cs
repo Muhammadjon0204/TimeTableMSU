@@ -22,6 +22,12 @@ public class AdminScheduleBoardController : ApiControllerBase
         return ToOkResult(await _service.GetWeeklyAsync(weekId, groupId, teacherId, audienceId));
     }
 
+    [HttpGet("current-week")]
+    public async Task<ActionResult> GetCurrentWeek([FromQuery] int? groupId, [FromQuery] int? teacherId, [FromQuery] int? audienceId)
+    {
+        return ToOkResult(await _service.GetCurrentWeekAsync(groupId, teacherId, audienceId));
+    }
+
     [HttpGet("week-lookups")]
     public async Task<ActionResult> GetWeekLookups()
     {

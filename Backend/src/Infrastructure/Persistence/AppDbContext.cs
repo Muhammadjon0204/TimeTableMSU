@@ -13,6 +13,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Teacher> Teachers => Set<Teacher>();
     public DbSet<Subject> Subjects => Set<Subject>();
     public DbSet<Discipline> Disciplines => Set<Discipline>();
+    public DbSet<AcademicYear> AcademicYears => Set<AcademicYear>();
+    public DbSet<AcademicPeriod> AcademicPeriods => Set<AcademicPeriod>();
+    public DbSet<Holiday> Holidays => Set<Holiday>();
     public DbSet<Audience> Audiences => Set<Audience>();
     public DbSet<Weeks> Weeks => Set<Weeks>();
     public DbSet<Schedule> Schedules => Set<Schedule>();

@@ -17,6 +17,8 @@ public class AdminScheduleBoardRepository : IAdminScheduleBoardRepository
     {
         return await _context.Weeks
             .AsNoTracking()
+            .Include(week => week.AcademicYear)
+            .Include(week => week.AcademicPeriod)
             .OrderBy(week => week.StartDate)
             .ToListAsync();
     }
@@ -76,6 +78,15 @@ public class AdminScheduleBoardRepository : IAdminScheduleBoardRepository
             .OrderBy(schedule => schedule.Den)
             .ThenBy(schedule => schedule.Para)
             .ThenBy(schedule => schedule.Group.Name)
+            .ToListAsync();
+    }
+
+    public async Task<List<Holiday>> GetHolidaysAsync(DateTime startDate, DateTime endDate)
+    {
+        return await _context.Holidays
+            .AsNoTracking()
+            .Where(holiday => holiday.Date.Date >= startDate.Date && holiday.Date.Date <= endDate.Date)
+            .OrderBy(holiday => holiday.Date)
             .ToListAsync();
     }
 }

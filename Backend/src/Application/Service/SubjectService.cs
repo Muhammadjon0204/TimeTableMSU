@@ -265,6 +265,8 @@ public class SubjectService : ISubjectService
         {
             Id = subject.Id,
             Name = subject.Name,
+            Semester = subject.Semester,
+            HourCount = subject.HourCount,
             ControlForm = subject.ControlForm
         };
 

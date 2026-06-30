@@ -31,7 +31,7 @@ public static class DevDataSeeder
         await context.SaveChangesAsync();
 
         var teachers = SeedTeachers(context, random);
-        var weeks = SeedWeeks(context);
+        var weeks = SeedAcademicCalendar(context);
         var audiences = SeedAudiences(context);
         var subjects = SeedSubjects(context, specialities, random);
         var students = SeedStudents(context, groups, random);
@@ -198,6 +198,141 @@ public static class DevDataSeeder
         return teachers;
     }
 
+    private static List<Weeks> SeedAcademicCalendar(AppDbContext context)
+    {
+        var academicYear = new AcademicYear
+        {
+            Name = "2025/2026",
+            StartDate = new DateTime(2025, 9, 1),
+            EndDate = new DateTime(2026, 8, 31),
+            IsCurrent = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var periods = new List<AcademicPeriod>
+        {
+            Period(academicYear, "Autumn semester", AcademicPeriodType.Study, new DateTime(2025, 9, 1), new DateTime(2025, 12, 27), 1),
+            Period(academicYear, "Winter exam session", AcademicPeriodType.ExamSession, new DateTime(2025, 12, 29), new DateTime(2026, 1, 17), 1),
+            Period(academicYear, "Winter vacation", AcademicPeriodType.WinterVacation, new DateTime(2026, 1, 19), new DateTime(2026, 1, 31)),
+            Period(academicYear, "Spring semester", AcademicPeriodType.Study, new DateTime(2026, 2, 2), new DateTime(2026, 6, 7), 2),
+            Period(academicYear, "Summer exam session", AcademicPeriodType.ExamSession, new DateTime(2026, 6, 8), new DateTime(2026, 6, 21), 2),
+            Period(academicYear, "Summer practice PMII 2 course", AcademicPeriodType.SummerPractice, new DateTime(2026, 6, 22), new DateTime(2026, 7, 11), 2),
+            Period(academicYear, "Summer vacation", AcademicPeriodType.SummerVacation, new DateTime(2026, 7, 12), new DateTime(2026, 8, 31))
+        };
+
+        var holidays = new List<Holiday>
+        {
+            Holiday(academicYear, "New Year", new DateTime(2026, 1, 1), true),
+            Holiday(academicYear, "Mother's Day", new DateTime(2026, 3, 8), true),
+            Holiday(academicYear, "Navruz", new DateTime(2026, 3, 21), true),
+            Holiday(academicYear, "Victory Day", new DateTime(2026, 5, 9), true),
+            Holiday(academicYear, "Independence Day", new DateTime(2025, 9, 9), true),
+            // Religious holidays should be updated per academic year by administrator.
+            Holiday(academicYear, "Ramazan Khait", new DateTime(2026, 3, 20), false, "Approximate demo date"),
+            Holiday(academicYear, "Kurban Bayram", new DateTime(2026, 5, 27), false, "Approximate demo date")
+        };
+
+        var weeks = new List<Weeks>();
+        foreach (AcademicPeriod period in periods)
+        {
+            weeks.AddRange(CreateWeeks(academicYear, period));
+        }
+
+        DateTime today = DateTime.Today;
+        foreach (Weeks week in weeks)
+        {
+            week.IsCurrent = week.StartDate.Date <= today && week.EndDate.Date >= today;
+        }
+
+        context.AcademicYears.Add(academicYear);
+        context.AcademicPeriods.AddRange(periods);
+        context.Holidays.AddRange(holidays);
+        context.Weeks.AddRange(weeks);
+        return weeks;
+    }
+
+    private static AcademicPeriod Period(AcademicYear year, string name, AcademicPeriodType type, DateTime startDate, DateTime endDate, int? semester = null)
+    {
+        return new AcademicPeriod
+        {
+            AcademicYear = year,
+            Name = name,
+            Type = type,
+            StartDate = startDate,
+            EndDate = endDate,
+            Semester = semester,
+            IsActive = true
+        };
+    }
+
+    private static Holiday Holiday(AcademicYear year, string name, DateTime date, bool recurringByDate, string? note = null)
+    {
+        return new Holiday
+        {
+            AcademicYear = year,
+            Name = name,
+            Date = date,
+            IsRecurringByDate = recurringByDate,
+            IsStudyBlocked = true,
+            Note = note
+        };
+    }
+
+    private static List<Weeks> CreateWeeks(AcademicYear academicYear, AcademicPeriod period)
+    {
+        var weeks = new List<Weeks>();
+        DateTime cursor = period.StartDate;
+        int index = 1;
+
+        while (cursor.Date <= period.EndDate.Date)
+        {
+            DateTime endDate = cursor.AddDays(5);
+            if (endDate > period.EndDate)
+            {
+                endDate = period.EndDate;
+            }
+
+            weeks.Add(new Weeks
+            {
+                AcademicYear = academicYear,
+                AcademicPeriod = period,
+                Name = BuildWeekName(period.Type, index),
+                StartDate = cursor,
+                EndDate = endDate,
+                Type = ToWeekType(period.Type)
+            });
+
+            cursor = cursor.AddDays(7);
+            index++;
+        }
+
+        return weeks;
+    }
+
+    private static string BuildWeekName(AcademicPeriodType periodType, int index)
+    {
+        return periodType switch
+        {
+            AcademicPeriodType.ExamSession => $"{index} exam week",
+            AcademicPeriodType.SummerPractice => $"{index} practice week",
+            AcademicPeriodType.WinterVacation or AcademicPeriodType.SpringVacation or AcademicPeriodType.SummerVacation => $"{index} vacation week",
+            AcademicPeriodType.Holiday => $"{index} holiday week",
+            _ => $"{index} study week"
+        };
+    }
+
+    private static WeekType ToWeekType(AcademicPeriodType periodType)
+    {
+        return periodType switch
+        {
+            AcademicPeriodType.ExamSession or AcademicPeriodType.StateExam or AcademicPeriodType.Diploma => WeekType.Exam,
+            AcademicPeriodType.SummerPractice => WeekType.Practice,
+            AcademicPeriodType.WinterVacation or AcademicPeriodType.SpringVacation or AcademicPeriodType.SummerVacation => WeekType.Vacation,
+            AcademicPeriodType.Holiday => WeekType.Holiday,
+            _ => WeekType.Study
+        };
+    }
+
     private static List<Weeks> SeedWeeks(AppDbContext context)
     {
         var start = new DateTime(2025, 9, 1);
@@ -351,8 +486,12 @@ public static class DevDataSeeder
     private static List<Schedule> SeedSchedules(AppDbContext context, IReadOnlyList<Weeks> weeks, IReadOnlyList<Group> groups, IReadOnlyList<Discipline> disciplines, IReadOnlyList<Audience> audiences, Random random)
     {
         var schedules = new List<Schedule>();
+        var blockedHolidayDates = context.Holidays.Local
+            .Where(holiday => holiday.IsStudyBlocked)
+            .Select(holiday => holiday.Date.Date)
+            .ToHashSet();
 
-        foreach (var week in weeks)
+        foreach (var week in weeks.Where(week => week.Type is WeekType.Study or WeekType.Exam))
         {
             var groupSlots = new HashSet<string>();
             var teacherSlots = new HashSet<string>();
@@ -375,6 +514,12 @@ public static class DevDataSeeder
                         var para = (short)random.Next(1, 8);
                         var audience = PickAudience(discipline.Subject.Name, audiences, random);
                         var key = $"{week.Name}:{day}:{para}";
+                        var date = week.StartDate.Date.AddDays(day - 1);
+
+                        if (blockedHolidayDates.Contains(date) || date > week.EndDate.Date)
+                        {
+                            continue;
+                        }
 
                         if (!groupSlots.Add($"{group.Name}:{key}"))
                         {
@@ -411,8 +556,90 @@ public static class DevDataSeeder
             }
         }
 
+        AddPracticeSchedules(context, schedules, weeks, groups, disciplines, audiences);
+
         context.Schedules.AddRange(schedules);
         return schedules;
+    }
+
+    private static void AddPracticeSchedules(
+        AppDbContext context,
+        List<Schedule> schedules,
+        IReadOnlyList<Weeks> weeks,
+        IReadOnlyList<Group> groups,
+        IReadOnlyList<Discipline> disciplines,
+        IReadOnlyList<Audience> audiences)
+    {
+        Group? practiceGroup = groups.FirstOrDefault(group => group.Course == 2 && ReferenceEquals(group.Speciality, groups[0].Speciality));
+        if (practiceGroup == null)
+        {
+            return;
+        }
+
+        Teacher teacher = disciplines.First(discipline => ReferenceEquals(discipline.Group, practiceGroup)).Teacher;
+        Subject practiceSubject = new()
+        {
+            Name = "Summer practice",
+            Semester = 4,
+            ControlForm = ControlForm.Credit,
+            HourCount = 72
+        };
+
+        Discipline practiceDiscipline = new()
+        {
+            Group = practiceGroup,
+            Subject = practiceSubject,
+            Teacher = teacher,
+            LectureHourCount = 0,
+            PracticeHourCount = 72,
+            LaboratoryHourCount = 0,
+            OtherHourCount = 0,
+            Control = 0
+        };
+
+        List<Audience> practiceAudiences = audiences
+            .Where(audience => audience.Type is AudienceType.ComputerLab or AudienceType.GeneralHall)
+            .ToList();
+
+        if (practiceAudiences.Count == 0)
+        {
+            practiceAudiences = audiences.ToList();
+        }
+
+        foreach (Weeks week in weeks.Where(week => week.Type == WeekType.Practice))
+        {
+            for (short day = 1; day <= 6; day++)
+            {
+                DateTime date = week.StartDate.AddDays(day - 1);
+                if (date.Date > week.EndDate.Date)
+                {
+                    continue;
+                }
+
+                for (short para = 1; para <= 2; para++)
+                {
+                    schedules.Add(new Schedule
+                    {
+                        Week = week,
+                        Den = day,
+                        Para = para,
+                        Discipline = practiceDiscipline,
+                        Teacher = teacher,
+                        Group = practiceGroup,
+                        Audience = practiceAudiences[(day + para) % practiceAudiences.Count],
+                        LectureType = LectureType.Practice
+                    });
+                }
+            }
+        }
+
+        context.Subjects.Add(practiceSubject);
+        context.Disciplines.Add(practiceDiscipline);
+
+        if (disciplines is List<Discipline> disciplineList)
+        {
+            disciplineList.Add(practiceDiscipline);
+        }
     }
 
     private static List<Attendance> SeedAttendances(AppDbContext context, IReadOnlyList<Schedule> schedules, IReadOnlyList<Student> students, Random random)
@@ -420,7 +647,13 @@ public static class DevDataSeeder
         var studentsByGroup = students.GroupBy(x => x.Group).ToDictionary(x => x.Key!, x => x.ToList());
         var attendances = new List<Attendance>();
 
-        foreach (var schedule in schedules.OrderBy(_ => random.Next()).Take(420))
+        List<Schedule> selectedSchedules = schedules
+            .Where(schedule => schedule.Week.Type == WeekType.Practice)
+            .Concat(schedules.Where(schedule => schedule.Week.Type != WeekType.Practice).OrderBy(_ => random.Next()).Take(420))
+            .Distinct()
+            .ToList();
+
+        foreach (var schedule in selectedSchedules)
         {
             foreach (var student in studentsByGroup[schedule.Group])
             {

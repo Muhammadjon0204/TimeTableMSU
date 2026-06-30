@@ -309,9 +309,64 @@
   margin-top: 0.35rem;
 }
 
+.discipline-form-modal {
+  width: min(760px, calc(100vw - 2rem));
+}
+
+.discipline-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.discipline-select-field {
+  grid-column: span 3;
+}
+
+.discipline-form-modal .custom-select {
+  width: 100%;
+  max-width: none;
+}
+
+.discipline-form-modal .custom-select__control {
+  min-height: 54px;
+  padding-inline: 1rem;
+  border-color: #dbe3ee;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+}
+
+.discipline-form-modal .custom-select__control:hover,
+.discipline-form-modal .custom-select--open .custom-select__control {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.discipline-form-modal .custom-select__menu {
+  border-radius: 16px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+}
+
+.discipline-form-modal .custom-select__option {
+  align-items: flex-start;
+  min-height: 3.2rem;
+}
+
+.discipline-form-message {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 680px) {
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .discipline-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .discipline-select-field {
+    grid-column: auto;
   }
 
   .modal-actions {

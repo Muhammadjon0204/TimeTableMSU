@@ -25,10 +25,48 @@ public class AdminScheduleLookupService : IAdminScheduleLookupService
             Name = week.Name,
             StartDate = week.StartDate,
             EndDate = week.EndDate,
-            DisplayName = $"{week.Name} · {week.StartDate:dd.MM.yyyy} - {week.EndDate:dd.MM.yyyy}"
+            DisplayName = BuildWeekDisplayName(week),
+            AcademicYearName = week.AcademicYear?.Name ?? string.Empty,
+            PeriodName = week.AcademicPeriod?.Name ?? string.Empty,
+            PeriodType = week.AcademicPeriod?.Type.ToString() ?? string.Empty,
+            WeekType = week.Type.ToString(),
+            IsCurrent = week.IsCurrent || (week.StartDate.Date <= DateTime.Today && week.EndDate.Date >= DateTime.Today)
         }).ToList();
 
         return Result<List<WeekLookupDto>>.Success(result);
+    }
+
+    public async Task<Result<List<AcademicPeriodLookupDto>>> GetAcademicPeriodsAsync()
+    {
+        List<AcademicPeriod> periods = await _repository.GetAcademicPeriodsAsync();
+
+        List<AcademicPeriodLookupDto> result = periods.Select(period => new AcademicPeriodLookupDto
+        {
+            Id = period.Id,
+            Name = period.Name,
+            Type = period.Type.ToString(),
+            StartDate = period.StartDate,
+            EndDate = period.EndDate,
+            AcademicYearName = period.AcademicYear.Name
+        }).ToList();
+
+        return Result<List<AcademicPeriodLookupDto>>.Success(result);
+    }
+
+    public async Task<Result<List<HolidayLookupDto>>> GetHolidaysAsync()
+    {
+        List<Holiday> holidays = await _repository.GetHolidaysAsync();
+
+        List<HolidayLookupDto> result = holidays.Select(holiday => new HolidayLookupDto
+        {
+            Id = holiday.Id,
+            Name = holiday.Name,
+            Date = holiday.Date,
+            IsStudyBlocked = holiday.IsStudyBlocked,
+            Note = holiday.Note
+        }).ToList();
+
+        return Result<List<HolidayLookupDto>>.Success(result);
     }
 
     public async Task<Result<List<SubjectLookupDto>>> GetDisciplinesAsync()
@@ -41,7 +79,7 @@ public class AdminScheduleLookupService : IAdminScheduleLookupService
             SubjectName = subject.Name,
             Semester = subject.Semester,
             ControlForm = subject.ControlForm.ToString(),
-            DisplayName = $"{subject.Name} · {subject.Semester} семестр · {subject.ControlForm}"
+            DisplayName = $"{subject.Name} · {subject.Semester} semester · {subject.ControlForm}"
         }).ToList();
 
         return Result<List<SubjectLookupDto>>.Success(result);
@@ -51,7 +89,7 @@ public class AdminScheduleLookupService : IAdminScheduleLookupService
     {
         if (subjectId <= 0)
         {
-            return Result<List<DisciplineScheduleOptionDto>>.Failure("Некорректный идентификатор дисциплины");
+            return Result<List<DisciplineScheduleOptionDto>>.Failure("Invalid subject id");
         }
 
         List<Discipline> disciplines = await _repository.GetDisciplineOptionsAsync(subjectId);
@@ -118,5 +156,14 @@ public class AdminScheduleLookupService : IAdminScheduleLookupService
         }
 
         return $"{lastName} {firstName} {fatherName}";
+    }
+
+    private static string BuildWeekDisplayName(Weeks week)
+    {
+        string prefix = string.IsNullOrWhiteSpace(week.AcademicPeriod?.Name)
+            ? week.Type.ToString()
+            : week.AcademicPeriod.Name;
+
+        return $"{prefix} · {week.Name} · {week.StartDate:dd.MM.yyyy} - {week.EndDate:dd.MM.yyyy}";
     }
 }

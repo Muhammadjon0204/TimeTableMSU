@@ -6,6 +6,7 @@ namespace Application.Interfaces.Interface;
 public interface IAdminScheduleBoardService
 {
     Task<Result<WeeklyScheduleBoardDto>> GetWeeklyAsync(int? weekId, int? groupId, int? teacherId, int? audienceId);
+    Task<Result<WeeklyScheduleBoardDto>> GetCurrentWeekAsync(int? groupId, int? teacherId, int? audienceId);
     Task<Result<List<WeekLookupDto>>> GetWeekLookupsAsync();
     Task<Result<List<LookupDto>>> GetGroupLookupsAsync();
     Task<Result<List<LookupDto>>> GetTeacherLookupsAsync();

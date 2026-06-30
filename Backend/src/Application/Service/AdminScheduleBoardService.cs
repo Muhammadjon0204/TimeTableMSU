@@ -3,6 +3,7 @@ using Application.DTOs.ScheduleBoardDTOs;
 using Application.Interfaces.Interface;
 using Application.Interfaces.Repository;
 using Domain.Entities;
+using Domain.Enums;
 
 namespace Application.Service;
 
@@ -32,9 +33,15 @@ public class AdminScheduleBoardService : IAdminScheduleBoardService
         }
 
         List<Schedule> schedules = await _repository.GetWeeklySchedulesAsync(selectedWeek.Id, groupId, teacherId, audienceId);
-        WeeklyScheduleBoardDto board = MapBoard(selectedWeek, schedules);
+        List<Holiday> holidays = await _repository.GetHolidaysAsync(selectedWeek.StartDate, selectedWeek.EndDate);
+        WeeklyScheduleBoardDto board = MapBoard(selectedWeek, schedules, holidays);
 
         return Result<WeeklyScheduleBoardDto>.Success(board);
+    }
+
+    public async Task<Result<WeeklyScheduleBoardDto>> GetCurrentWeekAsync(int? groupId, int? teacherId, int? audienceId)
+    {
+        return await GetWeeklyAsync(null, groupId, teacherId, audienceId);
     }
 
     public async Task<Result<List<WeekLookupDto>>> GetWeekLookupsAsync()
@@ -45,7 +52,13 @@ public class AdminScheduleBoardService : IAdminScheduleBoardService
             Id = week.Id,
             Name = week.Name,
             StartDate = week.StartDate,
-            EndDate = week.EndDate
+            EndDate = week.EndDate,
+            DisplayName = BuildWeekDisplayName(week),
+            AcademicYearName = week.AcademicYear?.Name ?? string.Empty,
+            PeriodName = week.AcademicPeriod?.Name ?? string.Empty,
+            PeriodType = week.AcademicPeriod?.Type.ToString() ?? string.Empty,
+            WeekType = week.Type.ToString(),
+            IsCurrent = week.IsCurrent || IsWithin(DateTime.Today, week)
         }).ToList();
 
         return Result<List<WeekLookupDto>>.Success(result);
@@ -95,7 +108,7 @@ public class AdminScheduleBoardService : IAdminScheduleBoardService
         }
 
         DateTime today = DateTime.Today;
-        Weeks? currentWeek = weeks.FirstOrDefault(week => week.StartDate.Date <= today && week.EndDate.Date >= today);
+        Weeks? currentWeek = weeks.FirstOrDefault(week => IsWithin(today, week));
 
         if (currentWeek != null)
         {
@@ -107,14 +120,26 @@ public class AdminScheduleBoardService : IAdminScheduleBoardService
         return nextWeek ?? weeks.LastOrDefault();
     }
 
-    private static WeeklyScheduleBoardDto MapBoard(Weeks week, List<Schedule> schedules)
+    private static WeeklyScheduleBoardDto MapBoard(Weeks week, List<Schedule> schedules, List<Holiday> holidays)
     {
+        var holidaysByDate = holidays
+            .GroupBy(holiday => holiday.Date.Date)
+            .ToDictionary(group => group.Key, group => string.Join(", ", group.Select(holiday => holiday.Name)));
+
         WeeklyScheduleBoardDto board = new WeeklyScheduleBoardDto
         {
             WeekId = week.Id,
             WeekName = week.Name,
             StartDate = week.StartDate,
-            EndDate = week.EndDate
+            EndDate = week.EndDate,
+            AcademicYearName = week.AcademicYear?.Name ?? string.Empty,
+            PeriodName = week.AcademicPeriod?.Name ?? string.Empty,
+            PeriodType = week.AcademicPeriod?.Type.ToString() ?? string.Empty,
+            WeekType = week.Type.ToString(),
+            IsCurrentWeek = week.IsCurrent || IsWithin(DateTime.Today, week),
+            IsVacation = week.Type == WeekType.Vacation || week.AcademicPeriod?.Type is AcademicPeriodType.WinterVacation or AcademicPeriodType.SpringVacation or AcademicPeriodType.SummerVacation,
+            IsPractice = week.Type == WeekType.Practice || week.AcademicPeriod?.Type == AcademicPeriodType.SummerPractice,
+            IsExamSession = week.Type == WeekType.Exam || week.AcademicPeriod?.Type == AcademicPeriodType.ExamSession
         };
 
         for (int day = 1; day <= 6; day++)
@@ -130,7 +155,9 @@ public class AdminScheduleBoardService : IAdminScheduleBoardService
             {
                 Day = day,
                 DayName = GetDayName(day),
-                Date = dayDate
+                Date = dayDate,
+                IsHoliday = holidaysByDate.ContainsKey(dayDate),
+                HolidayName = holidaysByDate.GetValueOrDefault(dayDate)
             };
 
             foreach (IGrouping<short, Schedule> paraGroup in daySchedules.GroupBy(schedule => schedule.Para).OrderBy(group => group.Key))
@@ -174,8 +201,26 @@ public class AdminScheduleBoardService : IAdminScheduleBoardService
             WeekId = week?.Id,
             WeekName = week?.Name ?? string.Empty,
             StartDate = week?.StartDate,
-            EndDate = week?.EndDate
+            EndDate = week?.EndDate,
+            AcademicYearName = week?.AcademicYear?.Name ?? string.Empty,
+            PeriodName = week?.AcademicPeriod?.Name ?? string.Empty,
+            PeriodType = week?.AcademicPeriod?.Type.ToString() ?? string.Empty,
+            WeekType = week?.Type.ToString() ?? string.Empty
         };
+    }
+
+    private static bool IsWithin(DateTime today, Weeks week)
+    {
+        return week.StartDate.Date <= today.Date && week.EndDate.Date >= today.Date;
+    }
+
+    private static string BuildWeekDisplayName(Weeks week)
+    {
+        string prefix = string.IsNullOrWhiteSpace(week.AcademicPeriod?.Name)
+            ? week.Type.ToString()
+            : week.AcademicPeriod.Name;
+
+        return $"{prefix} · {week.Name} · {week.StartDate:dd.MM.yyyy} - {week.EndDate:dd.MM.yyyy}";
     }
 
     private static string GetDayName(int day)

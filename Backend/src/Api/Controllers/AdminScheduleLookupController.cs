@@ -22,6 +22,18 @@ public class AdminScheduleLookupController : ApiControllerBase
         return ToOkResult(await _service.GetWeeksAsync());
     }
 
+    [HttpGet("academic-periods")]
+    public async Task<ActionResult> GetAcademicPeriods()
+    {
+        return ToOkResult(await _service.GetAcademicPeriodsAsync());
+    }
+
+    [HttpGet("holidays")]
+    public async Task<ActionResult> GetHolidays()
+    {
+        return ToOkResult(await _service.GetHolidaysAsync());
+    }
+
     [HttpGet("disciplines")]
     public async Task<ActionResult> GetDisciplines()
     {

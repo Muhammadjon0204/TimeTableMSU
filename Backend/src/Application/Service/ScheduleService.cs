@@ -131,12 +131,7 @@ public class ScheduleService : IScheduleService
             AudienceId = validatedData.AudienceId,
             GroupId = validatedData.GroupId,
             WeekId = validatedData.WeekId,
-            LectureType = validatedData.LectureType,
-            Discipline = references.Discipline,
-            Teacher = references.Teacher,
-            Audience = references.Audience,
-            Group = references.Group,
-            Week = references.Week
+            LectureType = validatedData.LectureType
         };
 
         await _scheduleRepository.AddAsync(schedule);
@@ -204,11 +199,6 @@ public class ScheduleService : IScheduleService
         schedule.GroupId = validatedData.GroupId;
         schedule.WeekId = validatedData.WeekId;
         schedule.LectureType = validatedData.LectureType;
-        schedule.Discipline = references.Discipline;
-        schedule.Teacher = references.Teacher;
-        schedule.Audience = references.Audience;
-        schedule.Group = references.Group;
-        schedule.Week = references.Week;
 
         await _scheduleRepository.UpdateAsync(schedule);
 
