@@ -29,24 +29,13 @@ public class WeekService : IWeekService
             return Result<GetWeekDto>.Failure("Учебная неделя не найдена");
         }
 
-        GetWeekDto mappedDto = MapToGetWeekDto(week);
-
-        return Result<GetWeekDto>.Success(mappedDto);
+        return Result<GetWeekDto>.Success(MapToGetWeekDto(week));
     }
 
     public async Task<Result<List<GetWeekDto>>> GetAllAsync()
     {
         List<Weeks> weeks = await _weekRepository.GetAllAsync();
-
-        List<GetWeekDto> mappedDtos = new List<GetWeekDto>();
-
-        foreach (Weeks week in weeks)
-        {
-            GetWeekDto mappedDto = MapToGetWeekDto(week);
-            mappedDtos.Add(mappedDto);
-        }
-
-        return Result<List<GetWeekDto>>.Success(mappedDtos);
+        return Result<List<GetWeekDto>>.Success(weeks.Select(MapToGetWeekDto).ToList());
     }
 
     public async Task<Result<GetWeekDto>> CreateAsync(CreateWeekDto dto)
@@ -56,51 +45,32 @@ public class WeekService : IWeekService
             return Result<GetWeekDto>.Failure("Данные запроса отсутствуют");
         }
 
-        Result<ValidatedWeekData> validationResult = ValidateWeekData(
-            dto.Name,
-            dto.StartDate,
-            dto.EndDate);
+        Result<ValidatedWeekData> validationResult = ValidateWeekData(dto.Name, dto.StartDate, dto.EndDate, dto.AcademicYearId);
 
         if (validationResult.IsFailure)
         {
             return Result<GetWeekDto>.Failure(validationResult.Error);
         }
 
-        ValidatedWeekData validatedData = validationResult.Value;
+        ValidatedWeekData data = validationResult.Value;
+        Result duplicateResult = await EnsureNoDuplicatesAsync(data, null);
 
-        List<Weeks> weeks = await _weekRepository.GetAllAsync();
-
-        foreach (Weeks existingWeek in weeks)
+        if (duplicateResult.IsFailure)
         {
-            if (existingWeek.Name != null)
-            {
-                if (string.Equals(existingWeek.Name.Trim(), validatedData.Name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return Result<GetWeekDto>.Failure("Учебная неделя с таким названием уже существует");
-                }
-            }
+            return Result<GetWeekDto>.Failure(duplicateResult.Error);
         }
 
-        foreach (Weeks existingWeek in weeks)
+        Weeks week = new()
         {
-            if (HasDateIntersection(existingWeek, validatedData.StartDate, validatedData.EndDate))
-            {
-                return Result<GetWeekDto>.Failure("Указанный временной период пересекается с уже существующей неделей");
-            }
-        }
-
-        Weeks week = new Weeks
-        {
-            Name = validatedData.Name,
-            StartDate = validatedData.StartDate.ToDateTime(TimeOnly.MinValue),
-            EndDate = validatedData.EndDate.ToDateTime(TimeOnly.MinValue)
+            Name = data.Name,
+            StartDate = data.StartDate.ToDateTime(TimeOnly.MinValue),
+            EndDate = data.EndDate.ToDateTime(TimeOnly.MinValue),
+            AcademicYearId = data.AcademicYearId
         };
 
         await _weekRepository.AddAsync(week);
 
-        GetWeekDto mappedDto = MapToGetWeekDto(week);
-
-        return Result<GetWeekDto>.Success(mappedDto);
+        return Result<GetWeekDto>.Success(MapToGetWeekDto(week));
     }
 
     public async Task<Result<GetWeekDto>> UpdateAsync(UpdateWeekDto dto)
@@ -115,17 +85,12 @@ public class WeekService : IWeekService
             return Result<GetWeekDto>.Failure("Некорректный идентификатор недели");
         }
 
-        Result<ValidatedWeekData> validationResult = ValidateWeekData(
-            dto.Name,
-            dto.StartDate,
-            dto.EndDate);
+        Result<ValidatedWeekData> validationResult = ValidateWeekData(dto.Name, dto.StartDate, dto.EndDate, dto.AcademicYearId);
 
         if (validationResult.IsFailure)
         {
             return Result<GetWeekDto>.Failure(validationResult.Error);
         }
-
-        ValidatedWeekData validatedData = validationResult.Value;
 
         Weeks? week = await _weekRepository.GetByIdAsync(dto.Id);
 
@@ -134,65 +99,22 @@ public class WeekService : IWeekService
             return Result<GetWeekDto>.Failure("Учебная неделя для обновления не найдена");
         }
 
-        DateOnly currentStartDate = ConvertToDateOnly(week.StartDate);
-        DateOnly currentEndDate = ConvertToDateOnly(week.EndDate);
+        ValidatedWeekData data = validationResult.Value;
+        Result duplicateResult = await EnsureNoDuplicatesAsync(data, dto.Id);
 
-        bool nameChanged = true;
-
-        if (week.Name != null)
+        if (duplicateResult.IsFailure)
         {
-            nameChanged = !string.Equals(week.Name.Trim(), validatedData.Name, StringComparison.OrdinalIgnoreCase);
+            return Result<GetWeekDto>.Failure(duplicateResult.Error);
         }
 
-        bool startDateChanged = currentStartDate != validatedData.StartDate;
-        bool endDateChanged = currentEndDate != validatedData.EndDate;
-        bool datesChanged = startDateChanged || endDateChanged;
-
-        if (nameChanged || datesChanged)
-        {
-            List<Weeks> weeks = await _weekRepository.GetAllAsync();
-
-            if (nameChanged)
-            {
-                foreach (Weeks existingWeek in weeks)
-                {
-                    if (existingWeek.Id != dto.Id)
-                    {
-                        if (existingWeek.Name != null)
-                        {
-                            if (string.Equals(existingWeek.Name.Trim(), validatedData.Name, StringComparison.OrdinalIgnoreCase))
-                            {
-                                return Result<GetWeekDto>.Failure("Название недели уже используется другой учебной неделей");
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (datesChanged)
-            {
-                foreach (Weeks existingWeek in weeks)
-                {
-                    if (existingWeek.Id != dto.Id)
-                    {
-                        if (HasDateIntersection(existingWeek, validatedData.StartDate, validatedData.EndDate))
-                        {
-                            return Result<GetWeekDto>.Failure("Указанный временной период пересекается с уже существующей неделей");
-                        }
-                    }
-                }
-            }
-        }
-
-        week.Name = validatedData.Name;
-        week.StartDate = validatedData.StartDate.ToDateTime(TimeOnly.MinValue);
-        week.EndDate = validatedData.EndDate.ToDateTime(TimeOnly.MinValue);
+        week.Name = data.Name;
+        week.StartDate = data.StartDate.ToDateTime(TimeOnly.MinValue);
+        week.EndDate = data.EndDate.ToDateTime(TimeOnly.MinValue);
+        week.AcademicYearId = data.AcademicYearId;
 
         await _weekRepository.UpdateAsync(week);
 
-        GetWeekDto mappedDto = MapToGetWeekDto(week);
-
-        return Result<GetWeekDto>.Success(mappedDto);
+        return Result<GetWeekDto>.Success(MapToGetWeekDto(week));
     }
 
     public async Task<Result> DeleteAsync(int id)
@@ -214,10 +136,27 @@ public class WeekService : IWeekService
         return Result.Success();
     }
 
-    private static Result<ValidatedWeekData> ValidateWeekData(
-        string name,
-        DateOnly startDate,
-        DateOnly endDate)
+    private async Task<Result> EnsureNoDuplicatesAsync(ValidatedWeekData data, int? excludedId)
+    {
+        List<Weeks> weeks = await _weekRepository.GetByAcademicYearAsync(data.AcademicYearId);
+
+        foreach (Weeks existingWeek in weeks.Where(week => week.Id != excludedId))
+        {
+            if (string.Equals(existingWeek.Name?.Trim(), data.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                return Result.Failure("Неделя с таким названием уже существует в выбранном учебном году");
+            }
+
+            if (HasDateIntersection(existingWeek, data.StartDate, data.EndDate))
+            {
+                return Result.Failure("Указанный период пересекается с существующей неделей выбранного учебного года");
+            }
+        }
+
+        return Result.Success();
+    }
+
+    private static Result<ValidatedWeekData> ValidateWeekData(string name, DateOnly startDate, DateOnly endDate, int? academicYearId)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -226,12 +165,7 @@ public class WeekService : IWeekService
 
         string trimmedName = name.Trim();
 
-        if (trimmedName.Length < 2)
-        {
-            return Result<ValidatedWeekData>.Failure("Длина названия недели должна быть от 2 до 50 символов");
-        }
-
-        if (trimmedName.Length > 50)
+        if (trimmedName.Length < 2 || trimmedName.Length > 50)
         {
             return Result<ValidatedWeekData>.Failure("Длина названия недели должна быть от 2 до 50 символов");
         }
@@ -239,6 +173,11 @@ public class WeekService : IWeekService
         if (ContainsDangerousCharacters(trimmedName))
         {
             return Result<ValidatedWeekData>.Failure("Обнаружены недопустимые символы в названии недели");
+        }
+
+        if (!academicYearId.HasValue || academicYearId.Value <= 0)
+        {
+            return Result<ValidatedWeekData>.Failure("Выберите учебный год");
         }
 
         if (startDate == default)
@@ -253,127 +192,59 @@ public class WeekService : IWeekService
 
         if (startDate >= endDate)
         {
-            return Result<ValidatedWeekData>.Failure("Дата начала недели не может быть позже или равна дате окончания");
+            return Result<ValidatedWeekData>.Failure("Дата начала недели должна быть раньше даты окончания");
         }
 
-        ValidatedWeekData data = new ValidatedWeekData
+        return Result<ValidatedWeekData>.Success(new ValidatedWeekData
         {
             Name = trimmedName,
             StartDate = startDate,
-            EndDate = endDate
-        };
-
-        return Result<ValidatedWeekData>.Success(data);
+            EndDate = endDate,
+            AcademicYearId = academicYearId.Value
+        });
     }
 
     private static GetWeekDto MapToGetWeekDto(Weeks week)
     {
-        GetWeekDto dto = new GetWeekDto
+        return new GetWeekDto
         {
             Id = week.Id,
             Name = week.Name ?? string.Empty,
-            StartDate = ConvertToDateOnly(week.StartDate),
-            EndDate = ConvertToDateOnly(week.EndDate)
+            StartDate = DateOnly.FromDateTime(week.StartDate),
+            EndDate = DateOnly.FromDateTime(week.EndDate),
+            AcademicYearId = week.AcademicYearId,
+            AcademicYearName = week.AcademicYear?.Name ?? string.Empty,
+            WeekType = week.Type.ToString(),
+            IsCurrent = week.IsCurrent
         };
-
-        return dto;
     }
 
-    private static bool HasDateIntersection(
-        Weeks existingWeek,
-        DateOnly startDate,
-        DateOnly endDate)
+    private static bool HasDateIntersection(Weeks existingWeek, DateOnly startDate, DateOnly endDate)
     {
-        DateOnly existingStartDate = ConvertToDateOnly(existingWeek.StartDate);
-        DateOnly existingEndDate = ConvertToDateOnly(existingWeek.EndDate);
+        DateOnly existingStartDate = DateOnly.FromDateTime(existingWeek.StartDate);
+        DateOnly existingEndDate = DateOnly.FromDateTime(existingWeek.EndDate);
 
-        if (existingStartDate == default)
-        {
-            return false;
-        }
-
-        if (existingEndDate == default)
-        {
-            return false;
-        }
-
-        if (startDate < existingEndDate)
-        {
-            if (endDate > existingStartDate)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static DateOnly ConvertToDateOnly(DateTime? dateTime)
-    {
-        if (dateTime == null)
-        {
-            return default;
-        }
-
-        DateOnly dateOnly = DateOnly.FromDateTime(dateTime.Value);
-
-        return dateOnly;
+        return startDate < existingEndDate && endDate > existingStartDate;
     }
 
     private static bool ContainsDangerousCharacters(string value)
     {
-        if (value.Contains('<'))
-        {
-            return true;
-        }
-
-        if (value.Contains('>'))
-        {
-            return true;
-        }
-
-        if (value.Contains(';'))
-        {
-            return true;
-        }
-
-        if (value.IndexOf("<script", StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return true;
-        }
-
-        if (value.IndexOf("</script", StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return true;
-        }
-
-        if (value.IndexOf("script>", StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return true;
-        }
-
-        if (value.IndexOf("javascript:", StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return true;
-        }
-
-        if (value.IndexOf("onerror=", StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return true;
-        }
-
-        if (value.IndexOf("onload=", StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return true;
-        }
-
-        return false;
+        return value.Contains('<')
+            || value.Contains('>')
+            || value.Contains(';')
+            || value.IndexOf("<script", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("</script", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("script>", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("javascript:", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("onerror=", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("onload=", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private class ValidatedWeekData
     {
-        public string Name { get; set; } = null!;
+        public string Name { get; set; } = string.Empty;
         public DateOnly StartDate { get; set; }
         public DateOnly EndDate { get; set; }
+        public int AcademicYearId { get; set; }
     }
 }

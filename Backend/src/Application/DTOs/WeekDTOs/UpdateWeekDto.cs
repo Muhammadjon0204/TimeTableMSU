@@ -6,4 +6,5 @@ public class UpdateWeekDto
     public string Name { get; set; } = null!;
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
+    public int? AcademicYearId { get; set; }
 }

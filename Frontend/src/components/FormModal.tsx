@@ -130,7 +130,13 @@ export function FormModal({ title, fields, initialValues, isOpen, isSubmitting, 
           {fields.map((field) => (
             <label key={field.name} className={field.type === 'textarea' || field.type === 'searchable-select' ? 'form-field wide' : 'form-field'}>
               <span>{field.label}</span>
-              {renderField(field, values[field.name], errors[field.name], lookupOptions[field.name] ?? field.options?.map(toStaticOption) ?? [], (value) => updateValue(field, value))}
+              {renderField(
+                field,
+                values[field.name],
+                errors[field.name],
+                lookupOptions[field.name] ?? field.options?.map(toStaticOption) ?? [],
+                (value) => updateValue(field, value),
+              )}
               {errors[field.name] ? <small className="form-field-error">{errors[field.name]}</small> : null}
               {lookupErrors[field.name] ? <small className="form-field-error">{lookupErrors[field.name]}</small> : null}
             </label>
@@ -153,7 +159,7 @@ export function FormModal({ title, fields, initialValues, isOpen, isSubmitting, 
 function renderField(field: FieldConfig, value: unknown, error: string | undefined, options: SelectOption[], onChange: (value: string) => void) {
   const fieldValue = value === null || value === undefined ? '' : String(value);
 
-  if (field.type === 'searchable-select') {
+  if (field.type === 'searchable-select' || field.type === 'select') {
     return (
       <CustomSearchableSelect
         value={fieldValue}
@@ -163,19 +169,6 @@ function renderField(field: FieldConfig, value: unknown, error: string | undefin
         error={Boolean(error)}
         onChange={onChange}
       />
-    );
-  }
-
-  if (field.type === 'select') {
-    return (
-      <select className={error ? 'form-input--error' : ''} value={fieldValue} required={field.required} onChange={(event) => onChange(event.target.value)}>
-        <option value="">Выберите значение</option>
-        {field.options?.map((option) => (
-          <option key={String(option.value)} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
     );
   }
 
@@ -277,9 +270,9 @@ function validateValues(values: Record<string, unknown>, fields: FieldConfig[]) 
 }
 
 function validateByRule(field: FieldConfig, value: string) {
-  const nameRegex = /^[A-Za-zА-Яа-яЁё\s\-—]+$/;
-  const specialityNameRegex = /^[A-Za-zА-Яа-яЁё\s\-—()]+$/;
-  const groupNameRegex = /^[A-Za-zА-Яа-яЁё0-9\s\-—]+$/;
+  const nameRegex = /^[A-Za-zА-Яа-яЁё\s-]+$/;
+  const specialityNameRegex = /^[A-Za-zА-Яа-яЁё\s\-()]+$/;
+  const groupNameRegex = /^[A-Za-zА-Яа-яЁё0-9\s-]+$/;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^[0-9+\s\-()]+$/;
 

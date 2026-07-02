@@ -43,5 +43,10 @@ public class WeekConfiguration:IEntityTypeConfiguration<Weeks>
             .WithMany(x => x.Weeks)
             .HasForeignKey(w => w.AcademicPeriodId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(w => new { w.AcademicYearId, w.StartDate, w.EndDate });
+
+        builder.HasIndex(w => new { w.AcademicYearId, w.Name })
+            .IsUnique();
     }
 }

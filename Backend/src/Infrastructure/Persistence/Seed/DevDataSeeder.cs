@@ -1,5 +1,6 @@
 using Domain.Entities;
 using Domain.Enums;
+using Application.Service;
 using Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -209,6 +210,15 @@ public static class DevDataSeeder
             CreatedAt = DateTime.UtcNow
         };
 
+        var nextAcademicYear = new AcademicYear
+        {
+            Name = "2026/2027",
+            StartDate = new DateTime(2026, 9, 1),
+            EndDate = new DateTime(2027, 8, 31),
+            IsCurrent = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
         var periods = new List<AcademicPeriod>
         {
             Period(academicYear, "Autumn semester", AcademicPeriodType.Study, new DateTime(2025, 9, 1), new DateTime(2025, 12, 27), 1),
@@ -232,11 +242,10 @@ public static class DevDataSeeder
             Holiday(academicYear, "Kurban Bayram", new DateTime(2026, 5, 27), false, "Approximate demo date")
         };
 
-        var weeks = new List<Weeks>();
-        foreach (AcademicPeriod period in periods)
-        {
-            weeks.AddRange(CreateWeeks(academicYear, period));
-        }
+        var weeks = AcademicWeekGenerator.GenerateStudyWeeks(
+            academicYear,
+            DateOnly.FromDateTime(academicYear.StartDate),
+            AcademicWeekGenerator.GetDefaultGenerateUntil(academicYear));
 
         DateTime today = DateTime.Today;
         foreach (Weeks week in weeks)
@@ -244,7 +253,7 @@ public static class DevDataSeeder
             week.IsCurrent = week.StartDate.Date <= today && week.EndDate.Date >= today;
         }
 
-        context.AcademicYears.Add(academicYear);
+        context.AcademicYears.AddRange(academicYear, nextAcademicYear);
         context.AcademicPeriods.AddRange(periods);
         context.Holidays.AddRange(holidays);
         context.Weeks.AddRange(weeks);
