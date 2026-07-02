@@ -13,10 +13,11 @@ type CustomSearchableSelectProps = {
   placeholder: string;
   disabled?: boolean;
   clearValue?: string;
+  error?: boolean;
   onChange: (value: string) => void;
 };
 
-export function CustomSearchableSelect({ value, options, placeholder, disabled = false, clearValue = 'all', onChange }: CustomSearchableSelectProps) {
+export function CustomSearchableSelect({ value, options, placeholder, disabled = false, clearValue = 'all', error = false, onChange }: CustomSearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [alignEnd, setAlignEnd] = useState(false);
@@ -75,6 +76,7 @@ export function CustomSearchableSelect({ value, options, placeholder, disabled =
     isWide ? 'custom-select--wide' : '',
     alignEnd ? 'custom-select--align-end' : '',
     disabled ? 'custom-select--disabled' : '',
+    error ? 'custom-select--error' : '',
   ]
     .filter(Boolean)
     .join(' ');

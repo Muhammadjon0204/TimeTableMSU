@@ -104,7 +104,7 @@ public class GroupService : IGroupService
             return Result<GetGroupDto>.Failure("Длина названия группы должна быть от 2 до 30 символов");
         }
 
-        if (ContainsDangerousCharacters(trimmedName))
+        if (!IsValidGroupName(trimmedName))
         {
             return Result<GetGroupDto>.Failure("Обнаружены недопустимые символы в названии группы");
         }
@@ -213,7 +213,7 @@ public class GroupService : IGroupService
             return Result<GetGroupDto>.Failure("Длина названия группы должна быть от 2 до 30 символов");
         }
 
-        if (ContainsDangerousCharacters(trimmedName))
+        if (!IsValidGroupName(trimmedName))
         {
             return Result<GetGroupDto>.Failure("Обнаружены недопустимые символы в названии группы");
         }
@@ -354,5 +354,25 @@ public class GroupService : IGroupService
         }
 
         return false;
+    }
+
+    private static bool IsValidGroupName(string value)
+    {
+        if (ContainsDangerousCharacters(value))
+        {
+            return false;
+        }
+
+        foreach (char symbol in value)
+        {
+            if (char.IsLetterOrDigit(symbol) || char.IsWhiteSpace(symbol) || symbol == '-' || symbol == '—')
+            {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
     }
 }

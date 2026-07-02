@@ -302,6 +302,39 @@
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
 
+.form-field-error {
+  margin-top: 6px;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.form-input--error {
+  border-color: #fecaca !important;
+  background: #fffafa !important;
+}
+
+.form-field .custom-select {
+  width: 100%;
+  max-width: none;
+  min-height: 54px;
+}
+
+.form-field .custom-select__control {
+  height: 54px;
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.form-field .custom-select__menu {
+  z-index: 120;
+}
+
+.form-field .custom-select--error .custom-select__control {
+  border-color: #fecaca;
+  background: #fffafa;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

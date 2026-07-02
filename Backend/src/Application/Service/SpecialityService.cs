@@ -75,7 +75,7 @@ public class SpecialityService : ISpecialityService
             return Result<GetSpecialityDto>.Failure("Длина названия специальности должна быть от 2 до 150 символов");
         }
 
-        if (ContainsDangerousCharacters(trimmedName))
+        if (!IsValidSpecialityName(trimmedName))
         {
             return Result<GetSpecialityDto>.Failure("Обнаружены недопустимые символы");
         }
@@ -153,7 +153,7 @@ public class SpecialityService : ISpecialityService
             return Result<GetSpecialityDto>.Failure("Длина названия специальности должна быть от 2 до 150 символов");
         }
 
-        if (ContainsDangerousCharacters(trimmedName))
+        if (!IsValidSpecialityName(trimmedName))
         {
             return Result<GetSpecialityDto>.Failure("Обнаружены недопустимые символы");
         }
@@ -284,5 +284,25 @@ public class SpecialityService : ISpecialityService
         }
 
         return false;
+    }
+
+    private static bool IsValidSpecialityName(string value)
+    {
+        if (ContainsDangerousCharacters(value))
+        {
+            return false;
+        }
+
+        foreach (char symbol in value)
+        {
+            if (char.IsLetter(symbol) || char.IsWhiteSpace(symbol) || symbol == '-' || symbol == '—' || symbol == '(' || symbol == ')')
+            {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
     }
 }

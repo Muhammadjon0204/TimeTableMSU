@@ -493,6 +493,16 @@ public class StudentService : IStudentService
                 continue;
             }
 
+            if (symbol == '—')
+            {
+                continue;
+            }
+
+            if (char.IsWhiteSpace(symbol))
+            {
+                continue;
+            }
+
             if (!char.IsLetter(symbol))
             {
                 return false;

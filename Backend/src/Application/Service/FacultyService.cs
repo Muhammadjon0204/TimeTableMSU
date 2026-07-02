@@ -73,7 +73,7 @@ public class FacultyService : IFacultyService
             return Result<GetFacultyDto>.Failure("Длина названия факультета должна быть от 2 до 100 символов");
         }
 
-        if (ContainsDangerousCharacters(trimmedName))
+        if (!IsValidFacultyName(trimmedName))
         {
             return Result<GetFacultyDto>.Failure("Обнаружены недопустимые символы в названии");
         }
@@ -129,7 +129,7 @@ public class FacultyService : IFacultyService
             return Result<GetFacultyDto>.Failure("Длина названия факультета должна быть от 2 до 100 символов");
         }
 
-        if (ContainsDangerousCharacters(trimmedName))
+        if (!IsValidFacultyName(trimmedName))
         {
             return Result<GetFacultyDto>.Failure("Обнаружены недопустимые символы в названии");
         }
@@ -246,5 +246,25 @@ public class FacultyService : IFacultyService
         }
 
         return false;
+    }
+
+    private static bool IsValidFacultyName(string value)
+    {
+        if (ContainsDangerousCharacters(value))
+        {
+            return false;
+        }
+
+        foreach (char symbol in value)
+        {
+            if (char.IsLetter(symbol) || char.IsWhiteSpace(symbol) || symbol == '-' || symbol == '—')
+            {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
     }
 }

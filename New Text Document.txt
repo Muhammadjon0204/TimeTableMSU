@@ -450,3 +450,6 @@ INSERT INTO raspisanie (den, para, discipline_code, prepod_id, tip_zanyatiya, au
     (4, 2, 'ALGEO-1',   1,  'Лекция',   9, 1),
     (5, 1, 'LOGIC-1',   1,  'Лекция',   8, 1),
     (5, 2, 'HIST-RU-1', 11, 'Практика', 7, 1);
+
+
+    
